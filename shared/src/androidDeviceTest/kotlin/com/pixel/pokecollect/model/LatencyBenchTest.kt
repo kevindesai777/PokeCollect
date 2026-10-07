@@ -259,20 +259,23 @@ class LatencyBenchTest {
      * The app's own path: QueryPlanner -> LiteRtLmModel with `questionsPerConversation` (default 1),
      * primed by `planner.prepare`. Each row's sendMs is what the user waits for (`plan`); createMs is
      * the background preparation that follows an answer, run here to completion before the next
-     * question as if the user paused to read.
+     * question as if the user paused to read. `-e prepare false` never calls `prepare`, which is the
+     * app's old path (a fresh conversation per question), for a like-for-like before/after.
      */
     @Test
     fun appPath(): Unit = kotlinx.coroutines.runBlocking {
         val tag = args.getString("tag") ?: ""
         val perConversation = args.getString("questionsPerConversation")?.toInt() ?: 1
+        val prepare = args.getString("prepare")?.toBooleanStrict() ?: true
+        val variant = if (prepare) "APP$perConversation" else "APP-FRESH"
         val model = LiteRtLmModel(context, questionsPerConversation = perConversation)
         val appPlanner = QueryPlanner(model)
         val loadStart = SystemClock.elapsedRealtime()
         model.load()
         val loadMs = SystemClock.elapsedRealtime() - loadStart
         val prepareStart = SystemClock.elapsedRealtime()
-        appPlanner.prepare(catalog)
-        log("ENGINE app-q$perConversation loadMs=$loadMs prepareMs=${SystemClock.elapsedRealtime() - prepareStart} ${deviceState()}")
+        if (prepare) appPlanner.prepare(catalog)
+        log("ENGINE app-$variant loadMs=$loadMs prepareMs=${SystemClock.elapsedRealtime() - prepareStart} ${deviceState()}")
         val warmup = QueryPlanner.Warmup
         try {
             questions(args.getString("questions")?.toInt() ?: 12).forEachIndexed { index, (question, expected) ->
@@ -280,10 +283,10 @@ class LatencyBenchTest {
                 val planned = runCatching { appPlanner.plan(question, catalog) }
                 val planMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1_000_000
                 val t1 = SystemClock.elapsedRealtimeNanos()
-                appPlanner.prepare(catalog) // no-op unless the conversation is used up
+                if (prepare) appPlanner.prepare(catalog) // no-op unless the conversation is used up
                 val prepareMs = (SystemClock.elapsedRealtimeNanos() - t1) / 1_000_000
                 val output = planned.getOrNull()?.rawOutput ?: ("ERROR " + planned.exceptionOrNull()?.message)
-                log(row("app", tag, "APP$perConversation", index,
+                log(row("app", tag, variant, index,
                     Result(question, prepareMs, planMs, output.replace('\t', ' ').replace('\n', ' '), "\t\t\t\t\t", planned.getOrNull()?.query), expected))
             }
         } finally {
