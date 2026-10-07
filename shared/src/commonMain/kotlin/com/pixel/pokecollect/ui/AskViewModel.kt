@@ -77,6 +77,14 @@ class AskViewModel(
         viewModelScope.launch {
             modelStatus.value = try {
                 model.load()
+                // Ready means fast: on Android this creates and primes the conversation the first question uses.
+                try {
+                    planner.prepare(repository.catalog())
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Not fatal: the first question sets up its own conversation instead.
+                }
                 ModelStatus.Ready
             } catch (e: ModelUnavailableException) {
                 ModelStatus.Unavailable(e.message ?: "Model unavailable")

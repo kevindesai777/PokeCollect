@@ -75,6 +75,16 @@ class QueryPlanner internal constructor(
 ) {
     constructor(model: LocalModel) : this(model, QuestionCues, WireLabels.HaveMissing, Prompt.Round2)
 
+    /**
+     * Lets the model set up for this catalog's questions ahead of time. The warm-up question is the
+     * prompt's own "List everything" example, and its schema allows only that example's answer.
+     */
+    suspend fun prepare(catalog: Catalog) {
+        val (question, query) = Warmup
+        val wire = Options(listOf(query.intent.name.lowercase()), listOf(ANY), listOf(ANY), listOf(ANY))
+        model.prepare(instructions(catalog), question, jsonSchema(wire))
+    }
+
     suspend fun plan(question: String, catalog: Catalog): PlannedQuery {
         val input = question.trim()
         val options = narrower.options(input, catalog)
@@ -184,13 +194,16 @@ class QueryPlanner internal constructor(
     internal companion object {
         val json = Json { ignoreUnknownKeys = false }
 
+        /** Also the question that primes a new conversation (see [prepare]). Declared first: used below. */
+        val Warmup = Example("List everything", CollectionQuery(LIST, null, null, null))
+
         // Few-shot examples deliberately avoid the live demo questions and every eval question.
         val Round1Examples = listOf(
             Example("Which Gen 5 grass cards don't I have yet?", CollectionQuery(LIST, 5, "grass", false)),
             Example("How many ice types are there?", CollectionQuery(COUNT, null, "ice", null)),
             Example("Show me the cards I own from generation 4", CollectionQuery(LIST, 4, null, true)),
             Example("How many cards am I missing?", CollectionQuery(COUNT, null, null, false)),
-            Example("List everything", CollectionQuery(LIST, null, null, null)),
+            Warmup,
         )
 
         /** Round 1 plus negation and first-person possession, the two failure classes seen in tuning. */

@@ -18,6 +18,13 @@ interface LocalModel {
      * runtime's constrained decoding where it exists; callers still validate the result.
      */
     suspend fun generateJson(instructions: String, input: String, jsonSchema: String): String
+
+    /**
+     * Gets ready for questions under [instructions] before the first one arrives, by answering
+     * [warmupInput] (whose [warmupSchema] allows exactly one answer). Optional: a runtime whose
+     * per-question setup is cheap can ignore it.
+     */
+    suspend fun prepare(instructions: String, warmupInput: String, warmupSchema: String) {}
 }
 
 class ModelUnavailableException(message: String, cause: Throwable? = null) : Exception(message, cause)

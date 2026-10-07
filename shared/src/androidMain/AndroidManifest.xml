@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!--
+        LiteRT-LM GPU backend. Since Android 12, vendor libraries are visible only to apps that
+        declare them; without these the GPU engine loads, then fails at the first token with
+        "Can not find OpenCL library on this device". LiteRT tries libOpenCL.so, then the Pixel and
+        car variants.
+        -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+    </application>
+</manifest>

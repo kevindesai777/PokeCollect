@@ -34,6 +34,29 @@ class QueryPlannerTest {
     }
 
     @Test
+    fun prepareWarmsUpWithAnExampleWhoseSchemaAllowsOnlyItsAnswer() = runTest {
+        var warmup: Triple<String, String, String>? = null
+        val model = object : LocalModel {
+            override val displayName = "fake"
+            override suspend fun load() = Unit
+            override suspend fun generateJson(instructions: String, input: String, jsonSchema: String) = error("not called")
+            override suspend fun prepare(instructions: String, warmupInput: String, warmupSchema: String) {
+                warmup = Triple(instructions, warmupInput, warmupSchema)
+            }
+        }
+        val planner = QueryPlanner(model)
+        planner.prepare(catalog)
+
+        val (instructions, input, schema) = checkNotNull(warmup)
+        assertEquals(planner.instructions(catalog), instructions)
+        // The warm-up question is one of the prompt's own examples, so priming adds nothing new.
+        assertTrue("Q: $input" in instructions)
+        val properties = Json.parseToJsonElement(schema).jsonObject["properties"]!!.jsonObject
+        val allowed = properties.mapValues { (_, field) -> field.jsonObject["enum"].toString() }
+        assertEquals(mapOf("intent" to """["list"]""", "generation" to """["any"]""", "type" to """["any"]""", "caught" to """["any"]"""), allowed)
+    }
+
+    @Test
     fun rejectsGenerationOutsideTheDataset() {
         val planner = QueryPlanner(FakeModel(""))
         assertFailsWith<InvalidQueryException> {

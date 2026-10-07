@@ -5,23 +5,37 @@ import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ResponseFormat
 import com.google.ai.edge.litertlm.SamplerConfig
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.time.measureTimedValue
 
-/** Gemma 3 1B through LiteRT-LM, CPU backend, JSON-schema-constrained output. */
+/**
+ * Gemma 3 1B through LiteRT-LM, CPU backend, JSON-schema-constrained output.
+ *
+ * Latency (Pixel 8, see docs/research-notes.md "Latency"): creating a conversation with constrained
+ * decoding costs ~4 s (LLGuidance indexes Gemma's 262k-token vocabulary per conversation), and its
+ * first message prefills the ~465-token system prompt (~3 s on CPU). So one conversation answers
+ * several questions, each prefilling only its own turn, and a replacement is created and primed in
+ * the background before it is needed.
+ */
 class LiteRtLmModel(
     private val context: Context,
     /** Off only for measuring what the constraint buys (see ModelEvalTest). */
     private val constrained: Boolean = true,
+    /** Questions one conversation answers before it is replaced. 1 = a fresh conversation per question. */
+    private val questionsPerConversation: Int = 1,
 ) : LocalModel {
 
     override val displayName = "Gemma 3 1B"
@@ -31,6 +45,12 @@ class LiteRtLmModel(
     // ("FAILED_PRECONDITION: A session already exists"), so generations are serialized.
     private val generation = Mutex()
     private var engine: Engine? = null
+    private val background = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // Guarded by [generation].
+    private var conversation: Conversation? = null
+    private var conversationKey: Warmup? = null
+    private var answered = 0
 
     override suspend fun load() {
         mutex.withLock {
@@ -47,7 +67,8 @@ class LiteRtLmModel(
                         Engine(
                             EngineConfig(
                                 modelPath = file.absolutePath,
-                                // GPU fails to find OpenCL on some Tensor devices; CPU is the safe default.
+                                // GPU prefills ~5x faster on a Pixel 8 but decodes constrained output
+                                // ~2.5x slower; with conversations reused, decode dominates.
                                 backend = Backend.CPU(),
                                 cacheDir = context.cacheDir.absolutePath,
                             ),
@@ -62,6 +83,14 @@ class LiteRtLmModel(
         }
     }
 
+    override suspend fun prepare(instructions: String, warmupInput: String, warmupSchema: String) {
+        load()
+        val engine = checkNotNull(engine)
+        generation.withLock {
+            withContext(Dispatchers.Default) { readyConversation(engine, Warmup(instructions, warmupInput, warmupSchema)) }
+        }
+    }
+
     override suspend fun generateJson(instructions: String, input: String, jsonSchema: String): String =
         generateJson(instructions, input, jsonSchema, constrained)
 
@@ -69,43 +98,91 @@ class LiteRtLmModel(
     internal suspend fun generateJson(instructions: String, input: String, jsonSchema: String, constrained: Boolean): String {
         load()
         val engine = checkNotNull(engine)
-        return generation.withLock { generateOnDefault(engine, instructions, input, jsonSchema, constrained) }
+        var usedUp: Warmup? = null
+        val text = generation.withLock {
+            withContext(Dispatchers.Default) {
+                val key = conversationKey
+                if (key != null && key.instructions == instructions && constrained == this@LiteRtLmModel.constrained) {
+                    val target = readyConversation(engine, key)
+                    try {
+                        send(target, input, jsonSchema.takeIf { constrained })
+                    } catch (e: Exception) {
+                        closeConversation() // a conversation that failed mid-message is not reused
+                        throw e
+                    }.also {
+                        answered++
+                        if (answered >= questionsPerConversation) usedUp = key
+                    }
+                } else {
+                    // Not prepared, or a different prompt or constraint setting: one fresh conversation.
+                    closeConversation()
+                    newConversation(engine, instructions, constrained).use { send(it, input, jsonSchema.takeIf { constrained }) }
+                }
+            }
+        }
+        // Build the next conversation now, while the answer is on screen, not when the next question arrives.
+        usedUp?.let { key ->
+            background.launch {
+                runCatching { prepare(key.instructions, key.input, key.schema) }
+                    .onFailure { Log.w(TAG, "Background prepare failed: ${it.message}") }
+            }
+        }
+        return text
     }
 
-    private suspend fun generateOnDefault(
-        engine: Engine,
-        instructions: String,
-        input: String,
-        jsonSchema: String,
-        constrained: Boolean,
-    ): String {
-        return withContext(Dispatchers.Default) {
-            // A fresh conversation per question: parsing is stateless, and history would leak between questions.
+    /** The current conversation if it has questions left, otherwise a new, primed one. Call under [generation]. */
+    private fun readyConversation(engine: Engine, key: Warmup): Conversation {
+        conversation?.let { if (conversationKey == key && answered < questionsPerConversation) return it }
+        closeConversation()
+        val created = newConversation(engine, key.instructions, constrained)
+        // Prefills the system prompt now, so the next real question prefills only its own turn.
+        val (_, took) = measureTimedValue { send(created, key.input, key.schema.takeIf { constrained }) }
+        Log.i(TAG, "Primed a new conversation in ${took.inWholeMilliseconds} ms")
+        conversation = created
+        conversationKey = key
+        answered = 0
+        return created
+    }
+
+    private fun newConversation(engine: Engine, instructions: String, constrained: Boolean): Conversation {
+        val (created, took) = measureTimedValue {
             engine.createConversation(
                 ConversationConfig(
                     systemInstruction = Contents.of(instructions),
                     samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 1.0), // greedy: same question, same query
                     enableResponseFormat = constrained,
                 ),
-            ).use { conversation ->
-                val (reply, took) = measureTimedValue {
-                    conversation.sendMessage(
-                        input,
-                        // Token-level constraint (LLGuidance): the model cannot emit JSON that breaks the schema.
-                        responseFormat = if (constrained) ResponseFormat.json(jsonSchema) else null,
-                        // Guards against known grammar loops on Gemma's tokenizer (LiteRT-LM #3510).
-                        maxOutputToken = MAX_OUTPUT_TOKENS,
-                    )
-                }
-                val text = reply.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
-                Log.i(TAG, "generateJson ${took.inWholeMilliseconds} ms: $input -> $text")
-                text
-            }
+            )
         }
+        Log.i(TAG, "createConversation ${took.inWholeMilliseconds} ms (constrained=$constrained)")
+        return created
+    }
+
+    private fun send(conversation: Conversation, input: String, jsonSchema: String?): String {
+        val (reply, took) = measureTimedValue {
+            conversation.sendMessage(
+                input,
+                // Token-level constraint (LLGuidance): the model cannot emit JSON that breaks the schema.
+                responseFormat = jsonSchema?.let { ResponseFormat.json(it) },
+                // Guards against known grammar loops on Gemma's tokenizer (LiteRT-LM #3510).
+                maxOutputToken = MAX_OUTPUT_TOKENS,
+            )
+        }
+        val text = reply.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
+        Log.i(TAG, "generateJson ${took.inWholeMilliseconds} ms: $input -> $text")
+        return text
+    }
+
+    private fun closeConversation() {
+        conversation?.close()
+        conversation = null
+        conversationKey = null
+        answered = 0
     }
 
     /** Frees the native engine (~1 GB). The app keeps one engine for its lifetime; tests close theirs. */
     fun close() {
+        closeConversation()
         engine?.close()
         engine = null
     }
@@ -115,6 +192,9 @@ class LiteRtLmModel(
         File("/data/local/tmp/llm/$MODEL_FILE"),
         context.getExternalFilesDir(null)?.let { File(it, "models/$MODEL_FILE") },
     )
+
+    /** What a conversation was primed with; a conversation is reused only for the same instructions. */
+    private data class Warmup(val instructions: String, val input: String, val schema: String)
 
     private companion object {
         const val TAG = "PokeCollect.Model"
