@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Voice input. Recognition runs on the device (SpeechRecognizer.createOnDeviceSpeechRecognizer). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application>
         <!--
         LiteRT-LM GPU backend. Since Android 12, vendor libraries are visible only to apps that

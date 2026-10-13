@@ -4,7 +4,9 @@ import Shared
 @main
 struct iOSApp: App {
     init() {
-        KoinIosKt.doInitKoinForIos(model: FoundationModelsBridge())
+        // Line-buffer stdout so PokeCollect.* lines show up live under `devicectl --console`.
+        setvbuf(stdout, nil, _IOLBF, 0)
+        KoinIosKt.doInitKoinForIos(model: FoundationModelsBridge(), speech: SpeechRecognizerBridge())
     }
 
     var body: some Scene {

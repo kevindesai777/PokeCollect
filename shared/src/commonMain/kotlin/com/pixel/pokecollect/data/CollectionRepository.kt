@@ -2,6 +2,7 @@ package com.pixel.pokecollect.data
 
 import com.pixel.pokecollect.query.Catalog
 import com.pixel.pokecollect.query.CollectionQuery
+import com.pixel.pokecollect.voice.CardName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -29,7 +30,17 @@ class CollectionRepository(private val dao: PokemonDao) {
         return Catalog(maxGeneration = dao.maxGeneration() ?: 0, types = dao.types())
     }
 
+    /** Every card's name, for matching what was said. */
+    suspend fun cardNames(): List<CardName> {
+        seeder.seedIfNeeded()
+        return dao.allPokemon().map { CardName(it.id, it.name, it.slug) }
+    }
+
     suspend fun setCaught(pokemonId: Int, caught: Boolean) {
         dao.upsertCollection(CollectionEntity(pokemonId, caught))
+    }
+
+    suspend fun markCaught(pokemonIds: Collection<Int>) {
+        dao.upsertCollection(pokemonIds.map { CollectionEntity(it, caught = true) })
     }
 }

@@ -10,8 +10,18 @@ import com.pixel.pokecollect.query.CollectionQuery
 import com.pixel.pokecollect.query.InvalidQueryException
 import com.pixel.pokecollect.query.PlannedQuery
 import com.pixel.pokecollect.query.QueryPlanner
+import com.pixel.pokecollect.query.RequestKind
+import com.pixel.pokecollect.query.RequestRouter
+import com.pixel.pokecollect.voice.CardMatcher
+import com.pixel.pokecollect.voice.CardName
+import com.pixel.pokecollect.voice.CardResolver
+import com.pixel.pokecollect.voice.HeardCard
+import com.pixel.pokecollect.voice.PickedBy
+import com.pixel.pokecollect.voice.SpeechToText
+import com.pixel.pokecollect.voice.VoiceResolution
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +29,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration
 
 sealed interface ModelStatus {
     data object Loading : ModelStatus
@@ -36,24 +48,77 @@ data class AskAnswer(
 
 data class AskFailure(val question: String, val message: String, val rawOutput: String?)
 
+/** One name in a list of cards: the card it became, what was heard or typed, and the person's choice. */
+data class HeardItem(
+    val heard: String,
+    /** Null when nothing fit; the person can pick one of the [alternatives]. */
+    val entry: PokemonWithCollection?,
+    val alternatives: List<PokemonWithCollection>,
+    val pickedBy: PickedBy,
+    val needsCheck: Boolean,
+    val selected: Boolean,
+)
+
+/** Cards found in the input, waiting for "Mark N caught". */
+data class HeardCards(
+    val items: List<HeardItem>,
+    /** Null when every name was clear by spelling and the model wasn't asked. */
+    val modelLatency: Duration?,
+    val rawOutput: String?,
+    val modelError: String?,
+) {
+    val selectedCount: Int get() = items.count { it.selected && it.entry != null }
+}
+
 data class AskUiState(
     val modelName: String,
     val modelStatus: ModelStatus = ModelStatus.Loading,
+    /** The live transcript while the microphone is on; null when it's off. */
+    val listening: String? = null,
+    val recognizerName: String = "",
+    /** What was last typed or said. The text field shows it, so a misheard word can be fixed and sent again. */
+    val input: String = "",
     val thinking: Boolean = false,
     val answer: AskAnswer? = null,
+    val cards: HeardCards? = null,
+    /** How many cards the last "Mark caught" saved. */
+    val marked: Int? = null,
     val failure: AskFailure? = null,
 )
 
+/** A heard name and what the person has made of it so far. */
+private data class Pick(val heard: HeardCard, val card: CardName?, val selected: Boolean)
+
+private data class CardsFound(val resolution: VoiceResolution, val picks: List<Pick>)
+
+/** Everything on screen except the answer, which follows the database live. */
+private data class Session(
+    val listening: String? = null,
+    val input: String = "",
+    val thinking: Boolean = false,
+    val cards: CardsFound? = null,
+    val marked: Int? = null,
+    val failure: AskFailure? = null,
+)
+
+/**
+ * One screen for questions and for adding cards, typed or said. [RequestRouter] decides which: a
+ * question goes to [QueryPlanner] and SQLite; a list of names goes to [CardResolver] and waits for
+ * the person to confirm.
+ */
 class AskViewModel(
     private val planner: QueryPlanner,
+    private val resolver: CardResolver,
     private val repository: CollectionRepository,
     private val model: LocalModel,
+    private val speech: SpeechToText,
 ) : ViewModel() {
 
     private val modelStatus = MutableStateFlow<ModelStatus>(ModelStatus.Loading)
-    private val thinking = MutableStateFlow(false)
+    private val session = MutableStateFlow(Session())
     private val planned = MutableStateFlow<PlannedQuery?>(null)
-    private val failure = MutableStateFlow<AskFailure?>(null)
+    private var listeningJob: Job? = null
+    private var cardNames: List<CardName>? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val answer = planned.flatMapLatest { p ->
@@ -69,8 +134,19 @@ class AskViewModel(
     }
 
     val uiState: StateFlow<AskUiState> =
-        combine(modelStatus, thinking, answer, failure) { status, isThinking, currentAnswer, currentFailure ->
-            AskUiState(model.displayName, status, isThinking, currentAnswer, currentFailure)
+        combine(modelStatus, session, answer, repository.observeCollection()) { status, s, currentAnswer, collection ->
+            AskUiState(
+                modelName = model.displayName,
+                modelStatus = status,
+                listening = s.listening,
+                recognizerName = speech.displayName,
+                input = s.input,
+                thinking = s.thinking,
+                answer = currentAnswer,
+                cards = s.cards?.toUi(collection),
+                marked = s.marked,
+                failure = s.failure,
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AskUiState(model.displayName))
 
     init {
@@ -78,13 +154,7 @@ class AskViewModel(
             modelStatus.value = try {
                 model.load()
                 // Ready means fast: on Android this creates and primes the conversation the first question uses.
-                try {
-                    planner.prepare(repository.catalog())
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // Not fatal: the first question sets up its own conversation instead.
-                }
+                prepareForQuestions()
                 ModelStatus.Ready
             } catch (e: ModelUnavailableException) {
                 ModelStatus.Unavailable(e.message ?: "Model unavailable")
@@ -92,29 +162,147 @@ class AskViewModel(
         }
     }
 
-    fun ask(question: String) {
-        if (question.isBlank() || thinking.value || modelStatus.value != ModelStatus.Ready) return
-        viewModelScope.launch {
-            thinking.value = true
-            failure.value = null
+    /** Typed, tapped (a suggestion) or said: the same words are handled the same way. */
+    fun ask(text: String) {
+        val input = text.trim()
+        if (input.isEmpty() || session.value.thinking || listeningJob?.isActive == true) return
+        viewModelScope.launch { handle(input) }
+    }
+
+    fun startListening() {
+        if (listeningJob?.isActive == true || session.value.thinking) return
+        planned.value = null
+        session.value = Session(listening = "")
+        listeningJob = viewModelScope.launch {
+            var transcript = ""
             try {
-                planned.value = planner.plan(question, repository.catalog())
+                val phrases = cardNames().flatMap { CardMatcher.spokenForms(it.name) }.distinct()
+                speech.listen(phrases).collect {
+                    transcript = it
+                    session.update { s -> s.copy(listening = it) }
+                }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: InvalidQueryException) {
-                planned.value = null
-                failure.value = AskFailure(question, e.message ?: "Invalid query", e.rawOutput)
             } catch (e: Exception) {
-                planned.value = null
-                failure.value = AskFailure(question, e.message ?: e::class.simpleName.orEmpty(), null)
-            } finally {
-                thinking.value = false
+                session.value = Session(input = transcript, failure = AskFailure(transcript, e.message ?: e::class.simpleName.orEmpty(), null))
+                return@launch
             }
+            if (transcript.isBlank()) {
+                session.value = Session(failure = AskFailure("", "Didn't hear anything. Tap the mic and try again.", null))
+            } else {
+                handle(transcript)
+            }
+        }
+    }
+
+    /** Done talking: what was just said is still recognized, then it's handled like typed input. */
+    fun stopListening() = speech.stop()
+
+    /** Leaving the screen: the microphone goes off and nothing is handled. */
+    fun leave() {
+        listeningJob?.cancel()
+        session.update { it.copy(listening = null) }
+    }
+
+    fun microphoneDenied() {
+        session.value = Session(failure = AskFailure("", "PokeCollect needs the microphone to hear you. Allow it in Settings, then try again.", null))
+    }
+
+    fun toggleCard(index: Int) = updatePick(index) { it.copy(selected = !it.selected) }
+
+    /** The person picked a different card for a heard name. */
+    fun chooseCard(index: Int, cardId: Int) = updatePick(index) { pick ->
+        pick.copy(card = pick.heard.alternatives.first { it.id == cardId }, selected = true)
+    }
+
+    fun markCaught() {
+        val found = session.value.cards ?: return
+        val ids = found.picks.filter { it.selected }.mapNotNull { it.card?.id }.distinct()
+        viewModelScope.launch {
+            repository.markCaught(ids)
+            session.update { it.copy(cards = null, marked = ids.size) }
         }
     }
 
     fun setCaught(pokemonId: Int, caught: Boolean) {
         viewModelScope.launch { repository.setCaught(pokemonId, caught) }
+    }
+
+    private suspend fun handle(input: String) {
+        planned.value = null
+        session.value = Session(input = input, thinking = true)
+        try {
+            val cards = cardNames()
+            val catalog = repository.catalog()
+            when (RequestRouter.kind(input, resolver.mentions(input, cards), catalog)) {
+                RequestKind.QUESTION -> planned.value = planner.plan(input, catalog)
+                RequestKind.CARDS -> {
+                    val resolution = resolver.resolve(input, cards)
+                    log(resolution)
+                    session.update { it.copy(cards = CardsFound(resolution, resolution.cards.map { h -> Pick(h, h.card, selected = h.card != null) })) }
+                    // On Android the model just answered under the names prompt; get the question prompt ready again.
+                    if (resolution.rawOutput != null) viewModelScope.launch { prepareForQuestions() }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: InvalidQueryException) {
+            session.update { it.copy(failure = AskFailure(input, e.message ?: "Invalid query", e.rawOutput)) }
+        } catch (e: Exception) {
+            session.update { it.copy(failure = AskFailure(input, e.message ?: e::class.simpleName.orEmpty(), null)) }
+        } finally {
+            session.update { it.copy(thinking = false) }
+        }
+    }
+
+    private suspend fun prepareForQuestions() {
+        try {
+            planner.prepare(repository.catalog())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Not fatal: the next question sets up its own conversation instead.
+        }
+    }
+
+    private suspend fun cardNames(): List<CardName> = cardNames ?: repository.cardNames().also { cardNames = it }
+
+    private fun updatePick(index: Int, change: (Pick) -> Pick) {
+        session.update { s ->
+            val found = s.cards ?: return@update s
+            s.copy(cards = found.copy(picks = found.picks.mapIndexed { i, p -> if (i == index) change(p) else p }))
+        }
+    }
+
+    private fun CardsFound.toUi(collection: List<PokemonWithCollection>): HeardCards {
+        val byId = collection.associateBy { it.pokemon.id }
+        return HeardCards(
+            items = picks.map { pick ->
+                HeardItem(
+                    heard = pick.heard.heard,
+                    entry = pick.card?.let { byId[it.id] },
+                    alternatives = pick.heard.alternatives.take(ALTERNATIVES).mapNotNull { byId[it.id] },
+                    pickedBy = pick.heard.pickedBy,
+                    needsCheck = pick.heard.needsCheck && pick.card == pick.heard.card,
+                    selected = pick.selected,
+                )
+            },
+            modelLatency = resolution.latency.takeIf { resolution.rawOutput != null || resolution.modelError != null },
+            rawOutput = resolution.rawOutput,
+            modelError = resolution.modelError,
+        )
+    }
+
+    /** One line per list of cards in logcat / the Xcode console, for checking runs on the phones. */
+    private fun log(resolution: VoiceResolution) = println(
+        "PokeCollect.Voice \"${resolution.transcript}\" -> " +
+            resolution.cards.joinToString { "${it.heard}=${it.card?.name}${if (it.needsCheck) "?" else ""}" } +
+            (resolution.rawOutput?.let { " | model ${resolution.latency.inWholeMilliseconds} ms: $it" } ?: "") +
+            (resolution.modelError?.let { " | model error: $it" } ?: ""),
+    )
+
+    private companion object {
+        const val ALTERNATIVES = 4
     }
 }
 

@@ -49,6 +49,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.koin.android)
+            implementation(libs.androidx.activity.compose) // microphone permission request
             implementation(libs.litertlm.android)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)

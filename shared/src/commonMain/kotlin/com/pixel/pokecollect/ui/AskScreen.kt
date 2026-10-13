@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,11 +26,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +54,7 @@ import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
 import com.pixel.pokecollect.ui.theme.monoFontFamily
+import com.pixel.pokecollect.voice.rememberMicrophonePermission
 
 private val Suggestions = listOf(
     "Which Gen 3 cards am I still missing?",
@@ -56,71 +62,118 @@ private val Suggestions = listOf(
     "Show me the water cards from Gen 1",
 )
 
-private val TerminalMuted = Color(0xFFBDBAB0)
+internal val TerminalMuted = Color(0xFFBDBAB0)
 
+/** Ask a question or name the cards you got, typed or said. */
 @Composable
 fun AskScreen(
     state: AskUiState,
+    /** Opened from the mic button: start listening right away. */
+    listenOnOpen: Boolean,
+    onListenOnOpenHandled: () -> Unit,
     onAsk: (String) -> Unit,
+    onStartListening: () -> Unit,
+    onStopListening: () -> Unit,
+    onMicrophoneDenied: () -> Unit,
+    onToggleCard: (index: Int) -> Unit,
+    onChooseCard: (index: Int, cardId: Int) -> Unit,
+    onMarkCaught: () -> Unit,
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     var question by rememberSaveable { mutableStateOf("") }
+    // What was said (or last sent) lands in the field, so a misheard word can be fixed and sent again.
+    LaunchedEffect(state.input) { if (state.input.isNotEmpty()) question = state.input }
     val focus = LocalFocusManager.current
     val submit = { text: String ->
         question = text
         focus.clearFocus()
         onAsk(text)
     }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(PokeColors.Background).safeDrawingPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 20.dp, top = 16.dp, bottom = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        item { TopBar(onBack) }
-        item {
-            QuestionField(
-                value = question,
-                onValueChange = { question = it },
-                enabled = state.modelStatus == ModelStatus.Ready && !state.thinking,
-                onSubmit = { submit(question) },
-            )
+    val listen = rememberMicrophonePermission { granted -> if (granted) onStartListening() else onMicrophoneDenied() }
+    LaunchedEffect(listenOnOpen) {
+        if (listenOnOpen) {
+            listen()
+            onListenOnOpenHandled()
         }
-        if (state.answer == null && state.failure == null && !state.thinking) {
+    }
+    val listening = state.listening != null
+    val busy = state.thinking || listening
+    val cards = state.cards
+
+    Box(Modifier.fillMaxSize().background(PokeColors.Background).safeDrawingPadding()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 20.dp, top = 16.dp, bottom = if (cards != null) 120.dp else 40.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item { TopBar("Ask", onBack) }
             item {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Suggestions.forEach { s ->
-                        Text(
-                            s,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            modifier = Modifier
-                                .brutal(PokeColors.Surface, PokeShapes.Small)
-                                .clickable(enabled = state.modelStatus == ModelStatus.Ready) { submit(s) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                        )
+                QuestionField(
+                    value = question,
+                    onValueChange = { question = it },
+                    enabled = !busy,
+                    listening = listening,
+                    onSubmit = { submit(question) },
+                    onMic = {
+                        if (listening) {
+                            onStopListening()
+                        } else {
+                            focus.clearFocus()
+                            listen()
+                        }
+                    },
+                )
+            }
+            if (state.answer == null && state.failure == null && cards == null && state.marked == null && !busy) {
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Suggestions.forEach { s ->
+                            Text(
+                                s,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                modifier = Modifier
+                                    .brutal(PokeColors.Surface, PokeShapes.Small)
+                                    .clickable { submit(s) }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
                     }
                 }
             }
-        }
-        item { ModelCard(state) }
+            item { ModelCard(state) }
 
-        val answer = state.answer
-        if (answer != null && !state.thinking) {
-            item {
-                Text(answer.summary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
-            }
-            if (answer.planned.query.intent == QueryIntent.LIST) {
-                items(answer.results, key = { it.pokemon.id }) { entry ->
-                    PokemonRow(entry, onCaughtChange = { onCaughtChange(entry.pokemon.id, it) })
+            val answer = state.answer
+            if (answer != null && !busy) {
+                item {
+                    Text(answer.summary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+                if (answer.planned.query.intent == QueryIntent.LIST) {
+                    items(answer.results, key = { it.pokemon.id }) { entry ->
+                        PokemonRow(entry, onCaughtChange = { onCaughtChange(entry.pokemon.id, it) })
+                    }
                 }
             }
+            if (cards != null && !busy) {
+                item { HeardCardsSummary(cards) }
+                itemsIndexed(cards.items) { index, item ->
+                    HeardRow(item, onToggle = { onToggleCard(index) }, onChoose = { onChooseCard(index, it) })
+                }
+            }
+        }
+        if (cards != null && !busy && cards.items.isNotEmpty()) {
+            MarkCaughtButton(
+                cards.selectedCount,
+                onMarkCaught,
+                Modifier.align(Alignment.BottomCenter).padding(horizontal = 20.dp, vertical = 20.dp),
+            )
         }
     }
 }
 
+/** Back button, screen title and the "on-device" badge. */
 @Composable
-private fun TopBar(onBack: () -> Unit) {
+internal fun TopBar(title: String, onBack: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             Modifier.size(44.dp).brutal(PokeColors.Surface, PokeShapes.Small).clickable(onClick = onBack),
@@ -128,7 +181,7 @@ private fun TopBar(onBack: () -> Unit) {
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
-        Text("Ask", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         Row(
             modifier = Modifier
                 .brutal(PokeColors.Tertiary, PokeShapes.Tag, offset = 0.dp)
@@ -143,7 +196,14 @@ private fun TopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun QuestionField(value: String, onValueChange: (String) -> Unit, enabled: Boolean, onSubmit: () -> Unit) {
+private fun QuestionField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    listening: Boolean,
+    onSubmit: () -> Unit,
+    onMic: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,16 +214,28 @@ private fun QuestionField(value: String, onValueChange: (String) -> Unit, enable
     ) {
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text("Ask about your collection", style = MaterialTheme.typography.bodyLarge, color = PokeColors.OnSurfaceVariant)
+                Text("Ask, or name the cards you got", style = MaterialTheme.typography.bodyLarge, color = PokeColors.OnSurfaceVariant)
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
+                enabled = enabled,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSubmit() }),
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        Spacer(Modifier.size(10.dp))
+        // The mic turns into a stop button while listening: tap again when done.
+        Box(
+            Modifier
+                .size(46.dp)
+                .brutal(if (listening) PokeColors.Error else PokeColors.Surface, PokeShapes.Small)
+                .clickable(enabled = enabled || listening, onClick = onMic),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(if (listening) Icons.Default.Stop else Icons.Default.Mic, contentDescription = if (listening) "Done" else "Speak")
         }
         Spacer(Modifier.size(10.dp))
         Box(
@@ -178,12 +250,14 @@ private fun QuestionField(value: String, onValueChange: (String) -> Unit, enable
     }
 }
 
-/** The one dark block on screen: what the model understood, or why it couldn't. */
+/** The one dark block on screen: what was heard, what the model understood, or why it couldn't. */
 @Composable
 private fun ModelCard(state: AskUiState) {
     var showRaw by rememberSaveable { mutableStateOf(false) }
     val failure = state.failure
     val answer = state.answer
+    val cards = state.cards
+    val rawOutput = answer?.planned?.rawOutput ?: cards?.rawOutput ?: failure?.rawOutput
     val fill = if (failure != null) PokeColors.Caution else PokeColors.Ink
     val onFill = if (failure != null) PokeColors.Ink else Color.White
 
@@ -191,32 +265,51 @@ private fun ModelCard(state: AskUiState) {
         modifier = Modifier
             .fillMaxWidth()
             .brutal(fill, PokeShapes.Large, offset = 4.dp)
-            .clickable(enabled = answer != null || failure?.rawOutput != null) { showRaw = !showRaw }
+            .clickable(enabled = rawOutput != null && state.listening == null) { showRaw = !showRaw }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         val label = when {
+            state.listening != null -> "LISTENING · ${state.recognizerName}"
             failure != null -> "COULD NOT UNDERSTAND"
-            showRaw && answer != null -> "MODEL OUTPUT"
+            showRaw && rawOutput != null -> "MODEL OUTPUT"
+            cards != null -> "HEARD"
+            state.marked != null -> "MARKED CAUGHT"
             else -> "UNDERSTOOD AS"
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.listening != null) Box(Modifier.size(10.dp).background(PokeColors.Error, CircleShape))
             Text(label, style = MaterialTheme.typography.labelMedium, color = if (failure != null) PokeColors.Ink else TerminalMuted, modifier = Modifier.weight(1f))
-            if (answer != null && !state.thinking) {
-                val timing = if (answer.planned.usedModel) "${answer.planned.latency.inWholeMilliseconds} ms" else "no model needed"
-                Text(timing, fontFamily = monoFontFamily(), fontSize = 13.sp, color = TerminalMuted)
+            if (!state.thinking && state.listening == null) {
+                val timing = when {
+                    answer != null -> if (answer.planned.usedModel) "${answer.planned.latency.inWholeMilliseconds} ms" else "no model needed"
+                    cards != null -> cards.modelLatency?.let { "${it.inWholeMilliseconds} ms" } ?: "no model needed"
+                    else -> null
+                }
+                timing?.let { Text(it, fontFamily = monoFontFamily(), fontSize = 13.sp, color = TerminalMuted) }
             }
         }
         val mono = MaterialTheme.typography.bodyLarge.copy(fontFamily = monoFontFamily(), fontSize = 19.sp, lineHeight = 27.sp, color = onFill)
+        val small = mono.copy(fontSize = 15.sp, lineHeight = 21.sp)
         when {
-            state.modelStatus == ModelStatus.Loading -> Busy("Loading ${state.modelName}…", mono)
-            state.modelStatus is ModelStatus.Unavailable -> Text((state.modelStatus as ModelStatus.Unavailable).reason, style = mono.copy(fontSize = 15.sp, lineHeight = 21.sp))
+            state.listening != null ->
+                if (state.listening.isEmpty()) {
+                    Text("Ask a question, or say the cards you got. Tap the stop button when you're done.", style = small.copy(color = TerminalMuted))
+                } else {
+                    Text(state.listening, style = mono)
+                }
             state.thinking -> Busy("${state.modelName} is thinking…", mono)
+            state.modelStatus == ModelStatus.Loading && answer == null && cards == null && failure == null -> Busy("Loading ${state.modelName}…", mono)
             failure != null -> {
-                Text(failure.message, style = mono.copy(fontSize = 15.sp, lineHeight = 21.sp))
+                Text(failure.message, style = small)
                 failure.rawOutput?.takeIf { showRaw }?.let { Text(it, style = mono.copy(fontSize = 13.sp, lineHeight = 18.sp)) }
             }
-            answer != null && showRaw -> Text(answer.planned.rawOutput, style = mono.copy(fontSize = 14.sp, lineHeight = 20.sp))
+            showRaw && rawOutput != null -> Text(rawOutput, style = mono.copy(fontSize = 14.sp, lineHeight = 20.sp))
+            cards != null -> {
+                Text(state.input, style = small)
+                cards.modelError?.let { Text("${state.modelName} unavailable: $it", style = small.copy(fontSize = 13.sp, color = PokeColors.Caution)) }
+            }
+            state.marked != null -> Text("${cardCount(state.marked)} added to your collection.", style = small)
             answer != null -> {
                 val query = answer.planned.query
                 val lines = buildList {
@@ -238,13 +331,17 @@ private fun ModelCard(state: AskUiState) {
                     )
                 }
             }
-            else -> Text("Ask a question. ${state.modelName} turns it into a query; SQLite answers it.", style = mono.copy(fontSize = 15.sp, lineHeight = 21.sp, color = TerminalMuted))
+            state.modelStatus is ModelStatus.Unavailable -> Text(state.modelStatus.reason, style = small)
+            else -> Text(
+                "Ask a question, or name the cards you got. ${state.modelName} turns it into a query; SQLite answers it.",
+                style = small.copy(color = TerminalMuted),
+            )
         }
     }
 }
 
 @Composable
-private fun Busy(text: String, style: androidx.compose.ui.text.TextStyle) {
+internal fun Busy(text: String, style: androidx.compose.ui.text.TextStyle) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PokeColors.Primary, strokeWidth = 2.5.dp)
         Text(text, style = style.copy(fontSize = 15.sp))

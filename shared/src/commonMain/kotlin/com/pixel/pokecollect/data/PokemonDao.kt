@@ -31,6 +31,9 @@ abstract class PokemonDao {
     )
     abstract fun observeMatching(generation: Int?, type: String?, caught: Boolean?): Flow<List<PokemonWithCollection>>
 
+    @Query("SELECT * FROM pokemon ORDER BY id")
+    abstract suspend fun allPokemon(): List<PokemonEntity>
+
     @Query("SELECT MAX(generation) FROM pokemon")
     abstract suspend fun maxGeneration(): Int?
 
@@ -42,6 +45,10 @@ abstract class PokemonDao {
 
     @Upsert
     abstract suspend fun upsertCollection(entry: CollectionEntity)
+
+    /** One transaction for a batch, so the list re-emits once, not once per card. */
+    @Upsert
+    abstract suspend fun upsertCollection(entries: List<CollectionEntity>)
 
     @Upsert
     protected abstract suspend fun upsertPokemon(pokemon: List<PokemonEntity>)

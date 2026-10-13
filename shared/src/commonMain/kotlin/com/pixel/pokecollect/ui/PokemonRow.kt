@@ -108,7 +108,7 @@ internal fun PokemonRow(entry: PokemonWithCollection, onCaughtChange: (Boolean) 
 }
 
 @Composable
-private fun DexCircle(id: Int, sprite: Sprite?, fill: Color?) {
+internal fun DexCircle(id: Int, sprite: Sprite?, fill: Color?) {
     Box(
         modifier = Modifier
             .size(56.dp)
@@ -153,7 +153,7 @@ private fun DexCircle(id: Int, sprite: Sprite?, fill: Color?) {
 internal fun dexLabel(id: Int) = "#" + id.toString().padStart(3, '0')
 
 @Composable
-private fun TypeChip(type: String) {
+internal fun TypeChip(type: String) {
     Text(
         type.uppercase(),
         style = MaterialTheme.typography.labelSmall,
@@ -164,7 +164,7 @@ private fun TypeChip(type: String) {
 }
 
 @Composable
-private fun CaughtBox(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun CaughtBox(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Box(
         modifier = Modifier
             .size(30.dp)

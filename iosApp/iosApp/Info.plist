@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PokeCollect listens when you say the names of your cards. The audio stays on this iPhone.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>PokeCollect turns the card names you say into text on this iPhone. Nothing is sent anywhere.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 </dict>
