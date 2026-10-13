@@ -61,11 +61,12 @@ private val TerminalMuted = Color(0xFFBDBAB0)
 @Composable
 fun AskScreen(
     state: AskUiState,
+    initialQuestion: String,
     onAsk: (String) -> Unit,
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
-    var question by rememberSaveable { mutableStateOf("") }
+    var question by rememberSaveable { mutableStateOf(initialQuestion) }
     val focus = LocalFocusManager.current
     val submit = { text: String ->
         question = text

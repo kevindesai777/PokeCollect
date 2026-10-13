@@ -22,6 +22,8 @@ private enum class Screen { Collection, Ask }
 fun App() {
     // Two screens; a navigation library would be more ceremony than it saves here.
     var screen by rememberSaveable { mutableStateOf(Screen.Collection) }
+    // What was typed in the Collection screen's search bar when Ask was tapped.
+    var askDraft by rememberSaveable { mutableStateOf("") }
 
     PokeCollectTheme {
         when (screen) {
@@ -30,9 +32,15 @@ fun App() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 CollectionScreen(
                     state = state,
+                    query = viewModel.query,
+                    onQueryChange = viewModel::search,
                     onSelectGeneration = viewModel::selectGeneration,
                     onCaughtChange = viewModel::setCaught,
-                    onAsk = { screen = Screen.Ask },
+                    onAsk = { text ->
+                        askDraft = text.trim()
+                        viewModel.search("") // the text moves to the Ask screen
+                        screen = Screen.Ask
+                    },
                     onVoice = {}, // voice milestone
                 )
             }
@@ -42,6 +50,7 @@ fun App() {
                 BackHandler { screen = Screen.Collection }
                 AskScreen(
                     state = state,
+                    initialQuestion = askDraft,
                     onAsk = viewModel::ask,
                     onCaughtChange = viewModel::setCaught,
                     onBack = { screen = Screen.Collection },
