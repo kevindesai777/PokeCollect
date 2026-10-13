@@ -68,6 +68,8 @@ internal val TerminalMuted = Color(0xFFBDBAB0)
 @Composable
 fun AskScreen(
     state: AskUiState,
+    /** Text carried over from the Collection screen's search bar; not sent until the person sends it. */
+    initialQuestion: String,
     /** Opened from the mic button: start listening right away. */
     listenOnOpen: Boolean,
     onListenOnOpenHandled: () -> Unit,
@@ -81,7 +83,7 @@ fun AskScreen(
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
-    var question by rememberSaveable { mutableStateOf("") }
+    var question by rememberSaveable { mutableStateOf(initialQuestion) }
     // What was said (or last sent) lands in the field, so a misheard word can be fixed and sent again.
     LaunchedEffect(state.input) { if (state.input.isNotEmpty()) question = state.input }
     val focus = LocalFocusManager.current

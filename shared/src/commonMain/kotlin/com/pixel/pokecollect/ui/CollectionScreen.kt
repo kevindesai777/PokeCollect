@@ -26,8 +26,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
@@ -49,7 +53,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,9 +71,11 @@ private val ScreenMargin = 20.dp
 @Composable
 fun CollectionScreen(
     state: CollectionUiState,
+    query: String,
+    onQueryChange: (String) -> Unit,
     onSelectGeneration: (Int?) -> Unit,
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
-    onAsk: () -> Unit,
+    onAsk: (question: String) -> Unit,
     onVoice: () -> Unit,
 ) {
     // View-only state. Anything that shapes the data lives in CollectionViewModel.
@@ -87,28 +95,33 @@ fun CollectionScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item { Title() }
-            if (!empty) item { AskEntry(onAsk) }
-            item { ProgressCard(caught = state.caught, total = state.total) }
+            if (!empty) item { SearchBar(query, onQueryChange, onAsk = { onAsk(query) }) }
+            // While searching, the matches get the room (the keyboard is up).
+            if (!state.searching) item { ProgressCard(caught = state.caught, total = state.total) }
 
             if (empty) {
                 item { EmptyState(onVoice = onVoice, onBrowse = { browsing = true }) }
             } else {
-                item {
-                    GenerationHeader(
-                        selected = state.selectedGeneration,
-                        expanded = gensExpanded,
-                        onToggle = { gensExpanded = !gensExpanded },
-                    )
-                }
-                if (gensExpanded) {
+                if (state.searching) {
+                    if (state.visible.isEmpty()) item { NoMatch(query, onAsk = { onAsk(query) }) }
+                } else {
                     item {
-                        GenerationStrip(
-                            generations = state.generations,
-                            caught = state.caught,
-                            total = state.total,
+                        GenerationHeader(
                             selected = state.selectedGeneration,
-                            onSelect = onSelectGeneration,
+                            expanded = gensExpanded,
+                            onToggle = { gensExpanded = !gensExpanded },
                         )
+                    }
+                    if (gensExpanded) {
+                        item {
+                            GenerationStrip(
+                                generations = state.generations,
+                                caught = state.caught,
+                                total = state.total,
+                                selected = state.selectedGeneration,
+                                onSelect = onSelectGeneration,
+                            )
+                        }
                     }
                 }
                 items(state.visible, key = { it.pokemon.id }) { entry ->
@@ -132,24 +145,73 @@ private fun Title() {
     )
 }
 
+/**
+ * Finds cards by name or dex number as you type, without the model. Ask opens the Ask screen and
+ * takes the typed text with it (not sent: the model may still be loading).
+ */
 @Composable
-private fun AskEntry(onClick: () -> Unit) {
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onAsk: () -> Unit) {
+    val focus = LocalFocusManager.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
             .brutal(PokeColors.Surface, PokeShapes.Medium, border = 3.dp, offset = 4.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(start = 18.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(26.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(
+                    "Find a card or ask",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = PokeColors.OnSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                singleLine = true,
+                // Autocorrect would "fix" card names.
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (query.isNotEmpty()) {
+            Box(Modifier.size(36.dp).clickable { onQueryChange("") }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Close, contentDescription = "Clear search", modifier = Modifier.size(22.dp))
+            }
+        }
         Text(
-            "Ask about your collection",
-            style = MaterialTheme.typography.bodyLarge,
+            "Ask",
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 17.sp),
+            modifier = Modifier
+                .brutal(PokeColors.Primary, PokeShapes.Small, offset = 0.dp)
+                .clickable(onClick = onAsk)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun NoMatch(query: String, onAsk: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("No card matches “${query.trim()}”", style = MaterialTheme.typography.titleSmall.copy(fontSize = 17.sp))
+        Text(
+            "Search looks at names and numbers. For anything else, ask the on-device model.",
+            style = MaterialTheme.typography.bodyMedium,
             color = PokeColors.OnSurfaceVariant,
         )
+        Spacer(Modifier.height(4.dp))
+        BrutalButton("Ask about it", PokeColors.Primary, onAsk)
     }
 }
 

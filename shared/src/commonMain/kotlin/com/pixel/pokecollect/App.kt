@@ -23,7 +23,9 @@ private enum class Screen { Collection, Ask }
 fun App() {
     // Two screens; a navigation library would be more ceremony than it saves here.
     var screen by rememberSaveable { mutableStateOf(Screen.Collection) }
-    // The mic button opens Ask already listening; the search field opens it ready to type.
+    // What was typed in the Collection screen's search bar when Ask was tapped.
+    var askDraft by rememberSaveable { mutableStateOf("") }
+    // The mic button opens Ask already listening; the search bar's Ask button opens it ready to type.
     var listenOnOpen by rememberSaveable { mutableStateOf(false) }
 
     PokeCollectTheme {
@@ -33,10 +35,17 @@ fun App() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 CollectionScreen(
                     state = state,
+                    query = viewModel.query,
+                    onQueryChange = viewModel::search,
                     onSelectGeneration = viewModel::selectGeneration,
                     onCaughtChange = viewModel::setCaught,
-                    onAsk = { screen = Screen.Ask },
+                    onAsk = { text ->
+                        askDraft = text.trim()
+                        viewModel.search("") // the text moves to the Ask screen
+                        screen = Screen.Ask
+                    },
                     onVoice = {
+                        askDraft = ""
                         listenOnOpen = true
                         screen = Screen.Ask
                     },
@@ -49,6 +58,7 @@ fun App() {
                 DisposableEffect(Unit) { onDispose { viewModel.leave() } }
                 AskScreen(
                     state = state,
+                    initialQuestion = askDraft,
                     listenOnOpen = listenOnOpen,
                     onListenOnOpenHandled = { listenOnOpen = false },
                     onAsk = viewModel::ask,
