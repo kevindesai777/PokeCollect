@@ -1,27 +1,40 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# PokeCollect
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+Demo app for the talk **"Offline by Default: On-Device LLMs in a Kotlin Multiplatform App"**.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+A card-collection tracker for Android and iOS (Kotlin Multiplatform, Compose Multiplatform UI)
+that answers questions about your collection and takes spoken lists of the cards you got, fully
+offline. It works in airplane mode.
+
+- **Android:** Gemma 3 1B (int4) through [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM),
+  CPU backend, JSON-schema-constrained decoding.
+- **iOS:** Apple Foundation Models, through a small Swift bridge (`DynamicGenerationSchema`).
+- **The model is a parser, not a database.** It turns a question into a structured query against
+  a fixed schema; plain Kotlin runs that query against SQLite (Room) and writes the answer. The
+  model never sees, lists or counts the collection, and never writes SQL.
+- **Voice:** each platform's own on-device speech recognizer. Heard card names are matched
+  deterministically first (spelling plus a rough pronunciation key); only unclear names go to the
+  model, which picks from a few candidates or says "none".
+
+### Layout
+
+```
+shared/src/commonMain   LocalModel + SpeechToText interfaces, Room repository, QueryPlanner,
+                        CardMatcher / CardResolver, RequestRouter, Compose UI
+shared/src/androidMain  LiteRtLmModel (Gemma 3 1B), AndroidSpeechToText
+shared/src/iosMain      callback interfaces implemented in Swift
+iosApp/                 FoundationModelsBridge.swift, SpeechRecognizerBridge.swift, app entry point
+androidApp/             Android app entry point
+scripts/                dataset build, sprite fetch, on-device eval and benchmark tooling
+```
 
 ### Running the apps
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
-
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
-
----
-
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+- **Android** (minSdk 31): `./gradlew :androidApp:assembleDebug`, then put the model on the
+  device (see "On-device model" below). Use a real phone; emulators are unreliable for LiteRT-LM.
+- **iOS** (iOS 26, Xcode 26): open [`iosApp/`](iosApp) in Xcode, set `TEAM_ID` in
+  [`iosApp/Configuration/Config.xcconfig`](iosApp/Configuration/Config.xcconfig), and run on an
+  iPhone or Mac with Apple Intelligence enabled. Generation does not work in the Simulator.
 
 ### Data
 
@@ -51,3 +64,8 @@ accepting the Gemma licence), then push it to your device:
 ```bash
 adb push gemma3-1b-it-int4.litertlm /data/local/tmp/llm/
 ```
+
+### License
+
+Copyright 2026 Kevin Desai. The code is licensed under the [Apache License 2.0](LICENSE).
+The dataset, fonts, libraries and the Gemma model keep their own licences, listed above.

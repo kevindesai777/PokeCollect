@@ -24,7 +24,7 @@ import kotlin.time.measureTimedValue
 /**
  * Gemma 3 1B through LiteRT-LM, CPU backend, JSON-schema-constrained output.
  *
- * Latency (Pixel 8, see docs/research-notes.md "Latency"): creating a conversation with constrained
+ * Latency (Pixel 8): creating a conversation with constrained
  * decoding costs ~4 s (LLGuidance indexes Gemma's 262k-token vocabulary per conversation), and its
  * first message prefills the ~465-token system prompt (~3 s on CPU). So one conversation answers
  * several questions, each prefilling only its own turn, and a replacement is created and primed in

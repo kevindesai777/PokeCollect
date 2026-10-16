@@ -18,16 +18,5 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 
-# Private working notes — not part of the open-source repo
-CLAUDE.md
-CLAUDE.local.md
-.claude/
-docs/talk-notes.md
-docs/research-notes.md
-docs/eval-runs-*
-docs/research-dossier.md
-docs/HANDOFF.md
-build/eval/
-
 # Sprites are TPC artwork: fetched into local builds by scripts/fetch_sprites.py, never committed
 shared/src/commonMain/composeResources/files/sprites/
