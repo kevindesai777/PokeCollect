@@ -14,8 +14,9 @@ import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 
 /**
- * Provides the [AppDatabase], the [com.pixel.pokecollect.model.LocalModel] and the
- * [com.pixel.pokecollect.voice.SpeechToText]: the things only a platform can build.
+ * Provides the [AppDatabase], the [com.pixel.pokecollect.model.LocalModel], its
+ * [com.pixel.pokecollect.model.ModelDelivery] and the [com.pixel.pokecollect.voice.SpeechToText]:
+ * the things only a platform can build.
  */
 expect val platformModule: Module
 

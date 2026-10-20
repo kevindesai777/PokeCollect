@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.androidx.activity.compose) // microphone permission request
             implementation(libs.litertlm.android)
+            implementation(libs.play.aiDelivery) // the model arrives as a Play AI pack
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
         }

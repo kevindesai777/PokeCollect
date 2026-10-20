@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,12 +44,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pixel.pokecollect.model.DeliveryState
 import com.pixel.pokecollect.query.QueryIntent
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
@@ -81,6 +84,7 @@ fun AskScreen(
     onChooseCard: (index: Int, cardId: Int) -> Unit,
     onMarkCaught: () -> Unit,
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
+    onRetryDownload: () -> Unit,
     onBack: () -> Unit,
 ) {
     var question by rememberSaveable { mutableStateOf(initialQuestion) }
@@ -93,6 +97,7 @@ fun AskScreen(
         onAsk(text)
     }
     val listen = rememberMicrophonePermission { granted -> if (granted) onStartListening() else onMicrophoneDenied() }
+    val confirmDownload = rememberDownloadConfirmation()
     LaunchedEffect(listenOnOpen) {
         if (listenOnOpen) {
             listen()
@@ -143,7 +148,7 @@ fun AskScreen(
                     }
                 }
             }
-            item { ModelCard(state) }
+            item { ModelCard(state, onRetryDownload = onRetryDownload, onConfirmDownload = confirmDownload) }
 
             val answer = state.answer
             if (answer != null && !busy) {
@@ -254,12 +259,15 @@ private fun QuestionField(
 
 /** The one dark block on screen: what was heard, what the model understood, or why it couldn't. */
 @Composable
-private fun ModelCard(state: AskUiState) {
+private fun ModelCard(state: AskUiState, onRetryDownload: () -> Unit, onConfirmDownload: () -> Unit) {
     var showRaw by rememberSaveable { mutableStateOf(false) }
     val failure = state.failure
     val answer = state.answer
     val cards = state.cards
     val rawOutput = answer?.planned?.rawOutput ?: cards?.rawOutput ?: failure?.rawOutput
+    // Android: the model is still coming from Google Play, and nothing else is on screen yet.
+    val delivering = state.delivery != DeliveryState.Delivered && state.modelStatus == ModelStatus.Loading &&
+        answer == null && cards == null && failure == null && state.marked == null
     val fill = if (failure != null) PokeColors.Caution else PokeColors.Ink
     val onFill = if (failure != null) PokeColors.Ink else Color.White
 
@@ -277,6 +285,7 @@ private fun ModelCard(state: AskUiState) {
             showRaw && rawOutput != null -> "MODEL OUTPUT"
             cards != null -> "HEARD"
             state.marked != null -> "MARKED CAUGHT"
+            delivering -> "GETTING THE MODEL"
             else -> "UNDERSTOOD AS"
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,6 +310,7 @@ private fun ModelCard(state: AskUiState) {
                     Text(state.listening, style = mono)
                 }
             state.thinking -> Busy("${state.modelName} is thinking…", mono)
+            delivering -> DeliveryStatus(state.delivery, state.modelName, mono, small, onRetryDownload, onConfirmDownload)
             state.modelStatus == ModelStatus.Loading && answer == null && cards == null && failure == null -> Busy("Loading ${state.modelName}…", mono)
             failure != null -> {
                 Text(failure.message, style = small)
@@ -340,6 +350,60 @@ private fun ModelCard(state: AskUiState) {
             )
         }
     }
+}
+
+/** The model on its way from Google Play: progress, or what the person can do about it. */
+@Composable
+private fun DeliveryStatus(
+    delivery: DeliveryState,
+    modelName: String,
+    mono: TextStyle,
+    small: TextStyle,
+    onRetry: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    fun mb(bytes: Long) = bytes / 1_000_000
+    when (delivery) {
+        DeliveryState.Checking, DeliveryState.Delivered -> Busy("Looking for $modelName…", mono)
+        is DeliveryState.Downloading -> {
+            val total = delivery.totalBytes
+            Busy(if (total > 0) "Downloading $modelName · ${mb(delivery.bytes)} of ${mb(total)} MB" else "Downloading $modelName…", mono)
+            if (total > 0) {
+                LinearProgressIndicator(
+                    progress = { (delivery.bytes.toFloat() / total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = PokeColors.Primary,
+                    trackColor = TerminalMuted.copy(alpha = 0.3f),
+                )
+            }
+            Text("Google Play downloads it once. After that, everything runs on this phone, offline.", style = small.copy(color = TerminalMuted))
+        }
+        is DeliveryState.WaitingForWifi -> {
+            Text("$modelName (${mb(delivery.totalBytes)} MB) is waiting for Wi-Fi.", style = small)
+            CardButton("Download on mobile data", onConfirm)
+        }
+        DeliveryState.NeedsConfirmation -> {
+            Text("Google Play needs to confirm the $modelName download.", style = small)
+            CardButton("Continue", onConfirm)
+        }
+        is DeliveryState.Failed -> {
+            Text(delivery.reason, style = small)
+            CardButton("Try again", onRetry)
+        }
+    }
+}
+
+@Composable
+private fun CardButton(text: String, onClick: () -> Unit) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = PokeColors.Ink,
+        modifier = Modifier
+            .brutal(PokeColors.Primary, PokeShapes.Small)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 @Composable

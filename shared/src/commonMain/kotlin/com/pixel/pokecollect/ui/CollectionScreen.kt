@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +78,7 @@ fun CollectionScreen(
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
     onAsk: (question: String) -> Unit,
     onVoice: () -> Unit,
+    onAbout: () -> Unit,
 ) {
     // View-only state. Anything that shapes the data lives in CollectionViewModel.
     var gensExpanded by rememberSaveable { mutableStateOf(false) }
@@ -84,7 +86,7 @@ fun CollectionScreen(
 
     Box(Modifier.fillMaxSize().background(PokeColors.Background).safeDrawingPadding()) {
         if (state !is CollectionUiState.Ready) {
-            Title()
+            Title(onAbout)
             return@Box
         }
         val empty = state.caught == 0 && !browsing
@@ -94,7 +96,7 @@ fun CollectionScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 20.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { Title() }
+            item { Title(onAbout) }
             if (!empty) item { SearchBar(query, onQueryChange, onAsk = { onAsk(query) }) }
             // While searching, the matches get the room (the keyboard is up).
             if (!state.searching) item { ProgressCard(caught = state.caught, total = state.total) }
@@ -137,12 +139,19 @@ fun CollectionScreen(
 }
 
 @Composable
-private fun Title() {
-    Text(
-        "PokeCollect",
-        style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 8.dp),
-    )
+private fun Title(onAbout: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("PokeCollect", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        Box(
+            Modifier.size(40.dp).brutal(PokeColors.Surface, PokeShapes.Small).clickable(onClick = onAbout),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.Info, contentDescription = "About")
+        }
+    }
 }
 
 /**

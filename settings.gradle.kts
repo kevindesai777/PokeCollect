@@ -32,3 +32,4 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":shared")
+include(":gemma_pack")

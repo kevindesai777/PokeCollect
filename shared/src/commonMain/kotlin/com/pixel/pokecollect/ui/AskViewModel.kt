@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pixel.pokecollect.data.CollectionRepository
 import com.pixel.pokecollect.data.PokemonWithCollection
+import com.pixel.pokecollect.model.DeliveryState
 import com.pixel.pokecollect.model.LocalModel
+import com.pixel.pokecollect.model.ModelDelivery
 import com.pixel.pokecollect.model.ModelUnavailableException
 import com.pixel.pokecollect.query.CollectionQuery
 import com.pixel.pokecollect.query.InvalidQueryException
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -72,6 +75,8 @@ data class HeardCards(
 
 data class AskUiState(
     val modelName: String,
+    /** Android: the model is still on its way from Google Play until this is [DeliveryState.Delivered]. */
+    val delivery: DeliveryState = DeliveryState.Checking,
     val modelStatus: ModelStatus = ModelStatus.Loading,
     /** The live transcript while the microphone is on; null when it's off. */
     val listening: String? = null,
@@ -111,6 +116,7 @@ class AskViewModel(
     private val resolver: CardResolver,
     private val repository: CollectionRepository,
     private val model: LocalModel,
+    private val delivery: ModelDelivery,
     private val speech: SpeechToText,
 ) : ViewModel() {
 
@@ -134,9 +140,10 @@ class AskViewModel(
     }
 
     val uiState: StateFlow<AskUiState> =
-        combine(modelStatus, session, answer, repository.observeCollection()) { status, s, currentAnswer, collection ->
+        combine(delivery.state, modelStatus, session, answer, repository.observeCollection()) { delivered, status, s, currentAnswer, collection ->
             AskUiState(
                 modelName = model.displayName,
+                delivery = delivered,
                 modelStatus = status,
                 listening = s.listening,
                 recognizerName = speech.displayName,
@@ -151,6 +158,8 @@ class AskViewModel(
 
     init {
         viewModelScope.launch {
+            delivery.request()
+            delivery.state.first { it == DeliveryState.Delivered }
             modelStatus.value = try {
                 model.load()
                 // Ready means fast: on Android this creates and primes the conversation the first question uses.
@@ -161,6 +170,9 @@ class AskViewModel(
             }
         }
     }
+
+    /** After a failed download: ask Google Play again. */
+    fun retryDownload() = delivery.request()
 
     /** Typed, tapped (a suggestion) or said: the same words are handled the same way. */
     fun ask(text: String) {

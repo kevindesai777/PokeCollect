@@ -1,6 +1,7 @@
 package com.pixel.pokecollect.model
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
@@ -36,6 +37,8 @@ class LiteRtLmModel(
     private val constrained: Boolean = true,
     /** Questions one conversation answers before it is replaced. 1 = a fresh conversation per question. */
     private val questionsPerConversation: Int = 1,
+    /** Where the model is: the app passes [AiPackModelDelivery.modelFile]; tests use the adb-pushed file. */
+    private val modelFile: () -> File? = { developerModelFile(context) },
 ) : LocalModel {
 
     override val displayName = "Gemma 3 1B"
@@ -55,10 +58,14 @@ class LiteRtLmModel(
     override suspend fun load() {
         mutex.withLock {
             if (engine != null) return
-            val file = candidates().firstOrNull { it.canRead() }
+            val file = withContext(Dispatchers.IO) { modelFile() }
                 ?: throw ModelUnavailableException(
-                    "Model file not found. Push it with:\n" +
-                        "adb push $MODEL_FILE /data/local/tmp/llm/$MODEL_FILE",
+                    "$displayName isn't on this phone yet: Google Play downloads it after install." +
+                        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                            " Development build: adb push $MODEL_FILE /data/local/tmp/llm/$MODEL_FILE"
+                        } else {
+                            ""
+                        },
                 )
             // initialize() blocks for seconds; keep it off the main thread.
             val (loaded, took) = withContext(Dispatchers.Default) {
@@ -187,18 +194,19 @@ class LiteRtLmModel(
         engine = null
     }
 
-    private fun candidates() = listOfNotNull(
-        // Survives uninstall/reinstall, which the dev workflow does often.
-        File("/data/local/tmp/llm/$MODEL_FILE"),
-        context.getExternalFilesDir(null)?.let { File(it, "models/$MODEL_FILE") },
-    )
-
     /** What a conversation was primed with; a conversation is reused only for the same instructions. */
     private data class Warmup(val instructions: String, val input: String, val schema: String)
 
     private companion object {
         const val TAG = "PokeCollect.Model"
-        const val MODEL_FILE = "gemma3-1b-it-int4.litertlm"
         const val MAX_OUTPUT_TOKENS = 64
     }
 }
+
+internal const val MODEL_FILE = "gemma3-1b-it-int4.litertlm"
+
+/** A model pushed with adb for development. Survives uninstall/reinstall, which the dev workflow does often. */
+internal fun developerModelFile(context: Context): File? = listOfNotNull(
+    File("/data/local/tmp/llm/$MODEL_FILE"),
+    context.getExternalFilesDir(null)?.let { File(it, "models/$MODEL_FILE") },
+).firstOrNull { it.canRead() }

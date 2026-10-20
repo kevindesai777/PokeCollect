@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pixel.pokecollect.ui.AboutScreen
 import com.pixel.pokecollect.ui.AskScreen
 import com.pixel.pokecollect.ui.AskViewModel
 import com.pixel.pokecollect.ui.CollectionScreen
@@ -16,12 +17,12 @@ import com.pixel.pokecollect.ui.CollectionViewModel
 import com.pixel.pokecollect.ui.theme.PokeCollectTheme
 import org.koin.compose.viewmodel.koinViewModel
 
-private enum class Screen { Collection, Ask }
+private enum class Screen { Collection, Ask, About }
 
 @OptIn(ExperimentalComposeUiApi::class) // BackHandler
 @Composable
 fun App() {
-    // Two screens; a navigation library would be more ceremony than it saves here.
+    // Three screens; a navigation library would be more ceremony than it saves here.
     var screen by rememberSaveable { mutableStateOf(Screen.Collection) }
     // What was typed in the Collection screen's search bar when Ask was tapped.
     var askDraft by rememberSaveable { mutableStateOf("") }
@@ -49,7 +50,12 @@ fun App() {
                         listenOnOpen = true
                         screen = Screen.Ask
                     },
+                    onAbout = { screen = Screen.About },
                 )
+            }
+            Screen.About -> {
+                BackHandler { screen = Screen.Collection }
+                AboutScreen(onBack = { screen = Screen.Collection })
             }
             Screen.Ask -> {
                 val viewModel = koinViewModel<AskViewModel>()
@@ -69,6 +75,7 @@ fun App() {
                     onChooseCard = viewModel::chooseCard,
                     onMarkCaught = viewModel::markCaught,
                     onCaughtChange = viewModel::setCaught,
+                    onRetryDownload = viewModel::retryDownload,
                     onBack = { screen = Screen.Collection },
                 )
             }

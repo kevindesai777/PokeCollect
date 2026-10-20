@@ -20,3 +20,11 @@ node_modules/
 
 # Sprites are TPC artwork: fetched into local builds by scripts/fetch_sprites.py, never committed
 shared/src/commonMain/composeResources/files/sprites/
+
+# The Gemma model (gated, 584 MB): staged into the AI pack by scripts/stage_model.sh, never committed
+gemma_pack/src/main/assets/
+
+# Upload-key details for release signing (see androidApp/build.gradle.kts)
+keystore.properties
+*.jks
+*.keystore
