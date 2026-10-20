@@ -19,3 +19,11 @@ internal actual val modelCredits: List<Credit> = listOf(
         "https://developer.android.com/guide/playcore/license",
     ),
 )
+
+internal actual val bundledLicenses: List<LicenseText> = listOf(
+    LicenseText("Notices", "NOTICE.txt"),
+    LicenseText("Gemma Terms of Use", "Gemma-Terms-of-Use.txt"),
+    LicenseText("Apache License 2.0", "Apache-2.0.txt"),
+    LicenseText("SIL Open Font License 1.1 · Space Grotesk", "SpaceGrotesk-OFL.txt"),
+    LicenseText("SIL Open Font License 1.1 · JetBrains Mono", "JetBrainsMono-OFL.txt"),
+)

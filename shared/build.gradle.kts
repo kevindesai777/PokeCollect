@@ -96,3 +96,17 @@ dependencies {
 room {
     schemaDirectory("$projectDir/schemas")
 }
+
+// Licence texts the Android app shows on its About screen. Copied from licenses/, LICENSE and
+// play/NOTICE at build time so the repo keeps one copy of each. The Gemma Terms of Use require a
+// copy for everyone who gets the model (licenses/Gemma-Terms-of-Use.txt).
+val licenseTexts = tasks.register<Sync>("licenseTexts") {
+    from(rootProject.file("licenses"))
+    from(rootProject.file("LICENSE")) { rename { "Apache-2.0.txt" } }
+    from(rootProject.file("play/NOTICE")) { rename { "NOTICE.txt" } }
+    into(layout.buildDirectory.dir("licenseResources/files/licenses"))
+}
+
+compose.resources {
+    customDirectory("androidMain", layout.dir(licenseTexts.map { it.destinationDir.parentFile.parentFile }))
+}

@@ -80,11 +80,15 @@ android {
     }
 }
 
-// A bundle without the model would upload fine and then fail on every phone (PACK_UNAVAILABLE).
+// A bundle without the model would upload fine and then fail on every phone (PACK_UNAVAILABLE);
+// one without the Gemma Terms would break the licence.
 tasks.matching { it.name == "bundleDebug" || it.name == "bundleRelease" }.configureEach {
-    // A local val: the configuration cache can't hold references to the build script itself.
+    // Local vals: the configuration cache can't hold references to the build script itself.
     val stagedModel = rootProject.file("gemma_pack/src/main/assets/gemma3-1b-it-int4.litertlm")
+    val gemmaTerms = rootProject.file("licenses/Gemma-Terms-of-Use.txt")
     doFirst {
         check(stagedModel.isFile) { "Model not staged for the AI pack: run scripts/stage_model.sh first." }
+        // Shipping Gemma means giving everyone a copy of its terms (About screen, licence texts).
+        check(gemmaTerms.isFile) { "Save the Gemma Terms of Use (ai.google.dev/gemma/terms) as licenses/Gemma-Terms-of-Use.txt." }
     }
 }
