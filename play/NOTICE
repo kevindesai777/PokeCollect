@@ -1,0 +1,133 @@
+PokeCollect
+Copyright 2026 Kevin Desai
+
+Licensed under the Apache License, Version 2.0 (the "License"). You may obtain
+a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+
+This app includes third-party material under the terms below.
+
+
+Gemma
+-----
+
+Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms
+
+The app includes Google's Gemma 3 1B model (gemma3-1b-it-int4.litertlm),
+unmodified. Use of Gemma is subject to the use restrictions in Section 3.2 of
+the Gemma Terms of Use, including the Gemma Prohibited Use Policy:
+https://ai.google.dev/gemma/prohibited_use_policy
+
+Full Gemma Terms of Use: https://ai.google.dev/gemma/terms
+
+
+Space Grotesk
+-------------
+
+Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The full licence is in licenses/SpaceGrotesk-OFL.txt and at
+https://openfontlicense.org
+
+
+JetBrains Mono
+--------------
+
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The full licence is in licenses/JetBrainsMono-OFL.txt and at
+https://openfontlicense.org
+
+
+PokéAPI data
+------------
+
+Species names, National Dex numbers, generations and types come from PokéAPI
+(https://github.com/PokeAPI/pokeapi), commit
+89289e314ae20a34e8159a34a5fe646e656d6149, under the BSD 3-Clause License:
+
+Copyright (c) © 2013–2023 Paul Hallett and PokéAPI contributors (https://github.com/PokeAPI/pokeapi#contributing). Pokémon and Pokémon character names are trademarks of Nintendo.
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of PokéAPI nor the names of its contributors may be used to
+  endorse or promote products derived from this software without specific
+  prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+neubrutalism-compose-multiplatform
+----------------------------------
+
+https://github.com/tamtom/neubrutalism-compose-multiplatform
+
+MIT License
+
+Copyright (c) 2025 Omar Tamimi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+Other libraries
+---------------
+
+The app also uses open-source libraries under the Apache License 2.0,
+including LiteRT-LM, Kotlin and kotlinx libraries, Compose Multiplatform,
+Jetpack (AndroidX) libraries including Room, and Koin.
+
+Google Play's AI delivery and asset delivery libraries are used under the Play
+Core Software Development Kit Terms of Service:
+https://developer.android.com/guide/playcore/license
+
+
+Pokémon
+-------
+
+PokeCollect is a free, unofficial fan app. It isn't affiliated with, endorsed
+or sponsored by Nintendo, Creatures Inc., GAME FREAK or The Pokémon Company.
+Pokémon and Pokémon character names are trademarks of their owners.
+Pokémon sprites © 1995–2026 Nintendo / Creatures Inc. / GAME FREAK inc. They
+are not covered by the Apache License or any other licence above.
