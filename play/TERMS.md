@@ -84,4 +84,4 @@ after a change, you accept the new terms.
 
 ## 8. Contact
 
-Questions about these terms: [contact email]
+Questions about these terms: kevindesai777@gmail.com

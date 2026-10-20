@@ -14,7 +14,7 @@ The species data (names, numbers, generations, types) comes from PokéAPI, a com
 under its BSD 3-Clause License.
 
 If you own rights in anything shown in the app and want it changed or removed, email
-[contact email] and I'll deal with it quickly.
+kevindesai777@gmail.com and I'll deal with it quickly.
 
 ## Short version
 

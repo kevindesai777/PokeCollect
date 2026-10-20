@@ -81,4 +81,4 @@ If this policy changes, I'll update this page and the date at the top.
 
 ## Contact
 
-Questions about this policy: [contact email]
+Questions about this policy: kevindesai777@gmail.com

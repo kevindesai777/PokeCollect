@@ -28,7 +28,7 @@ Play delivers after install, like for any user.
 
 ## Content rating (IARC questionnaire)
 
-- **Email address:** [contact email]
+- **Email address:** kevindesai777@gmail.com
 - **Category:** Utility, Productivity, Communication, or Other. It's a collection tracker, not a
   game, social app, store or news app.
 - **Every content question: No.** No violence, blood, sexual content, nudity, crude humour or bad

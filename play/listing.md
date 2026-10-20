@@ -92,7 +92,7 @@ First release. Track your collection, ask about it in plain words, and add cards
 
 - **Category:** Tools. (Entertainment is the other reasonable choice. Tools reads as a collector's
   utility, which fits the 18+ audience better.)
-- **Contact email:** [contact email]
+- **Contact email:** kevindesai777@gmail.com
 - **Website:** the public repo, https://github.com/kevindesai777/PokeCollect (optional).
 - **Privacy policy URL:** https://github.com/kevindesai777/PokeCollect/blob/main/play/PRIVACY.md
   (the same URL goes in App content > Privacy policy; it works once `play/` is pushed to `main`).
