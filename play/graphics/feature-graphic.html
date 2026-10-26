@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- Play feature graphic, 1024×500: the launcher icon's dex face (lens, lights, notched bezel)
+     as the background. Our own drawing: no sprites, Poké Ball or logos.
+     Render: Chrome --headless=new --screenshot=feature-graphic.png --window-size=1024,500 -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_medium.ttf"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_bold.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/jetbrains_mono_bold.ttf"); }
+
+  /* Icon colours from scripts/make_icon.py, app colours from Theme.kt */
+  :root { --red: #DC0A2D; --dark-red: #B3081F; --ink: #000; --surface: #FFF; --yellow: #F4D738;
+          --green: #22C55E; --pink: #FF8FB8; --muted: #4A4842; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1024px; height: 500px; background: var(--red); overflow: hidden; }
+  body { font-family: "Space Grotesk", sans-serif; color: var(--ink); position: relative; }
+  .mono { font-family: "JetBrains Mono", monospace; font-weight: 700; letter-spacing: 0.04em; }
+  .brutal { border: 3px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink); }
+  svg.body { position: absolute; left: 0; top: 0; }
+
+  h1 { position: absolute; left: 56px; top: 236px; font-size: 88px; font-weight: 700; letter-spacing: -0.03em;
+       line-height: 1; color: #fff; text-shadow: 5px 5px 0 var(--ink); }
+  .sub { position: absolute; left: 60px; top: 346px; width: 470px; font-size: 28px; font-weight: 500; line-height: 1.3; color: #fff; }
+  .sub .hl { color: var(--ink); background: var(--yellow); border: 3px solid var(--ink); border-radius: 8px; padding: 0 8px;
+             box-shadow: 4px 4px 0 var(--ink); white-space: nowrap; }
+
+  .tags { position: absolute; left: 604px; top: 52px; display: flex; gap: 12px; }
+  .tags span { border: 3px solid var(--ink); border-radius: 8px; padding: 6px 12px; font-size: 16px; box-shadow: 4px 4px 0 var(--ink); }
+
+  .q { position: absolute; left: 596px; top: 196px; width: 384px; background: var(--ink); color: #fff; border-radius: 14px;
+       padding: 16px 20px; font-size: 25px; font-weight: 500; line-height: 1.25; }
+  .a { position: absolute; left: 626px; top: 306px; width: 354px; background: var(--surface); padding: 16px 20px 18px; }
+  .a .label { font-size: 14px; color: var(--muted); }
+  .a .text { font-size: 30px; font-weight: 700; margin: 4px 0 12px; letter-spacing: -0.01em; }
+  .chips span { display: inline-block; border: 3px solid var(--ink); border-radius: 6px; padding: 3px 8px; font-size: 13px; margin-right: 6px; }
+</style>
+</head>
+<body>
+  <svg class="body" width="1024" height="500" viewBox="0 0 1024 500">
+    <path d="M0,206H520L566,160H1024V500H0Z" fill="#B3081F"/>
+    <path d="M0,206H520L566,160H1024" fill="none" stroke="#000" stroke-width="9" stroke-linejoin="round"/>
+    <circle cx="124" cy="104" r="64" fill="#FFF" stroke="#000" stroke-width="9"/>
+    <circle cx="124" cy="104" r="42" fill="#30A7D7" stroke="#000" stroke-width="6"/>
+    <circle cx="108" cy="88" r="13" fill="#D2F1FF"/>
+    <circle cx="240" cy="66" r="17" fill="#FF5A5A" stroke="#000" stroke-width="5"/>
+    <circle cx="284" cy="66" r="17" fill="#FFCB05" stroke="#000" stroke-width="5"/>
+    <circle cx="328" cy="66" r="17" fill="#3BD16F" stroke="#000" stroke-width="5"/>
+    <g stroke="#000" stroke-width="9" stroke-linecap="round">
+      <path d="M392,456l32,-32"/><path d="M418,462l32,-32"/><path d="M444,468l32,-32"/>
+    </g>
+  </svg>
+
+  <div class="tags mono"><span style="background:var(--green)">ON-DEVICE AI</span><span style="background:var(--pink)">AIRPLANE MODE</span></div>
+  <h1>PokeCollect</h1>
+  <p class="sub">Ask about your card collection. <span class="hl">No internet needed.</span></p>
+
+  <div class="q">Which Gen 3 cards am I still missing?</div>
+  <div class="a brutal">
+    <div class="label mono">ANSWER</div>
+    <div class="text">56 of 135 to go</div>
+    <div class="chips mono"><span style="background:#9BBEFD">GEN 3</span><span style="background:#FF8FB8">MISSING</span></div>
+  </div>
+</body>
+</html>

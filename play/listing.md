@@ -96,9 +96,16 @@ First release. Track your collection, ask about it in plain words, and add cards
 - **Website:** the public repo, https://github.com/kevindesai777/PokeCollect (optional).
 - **Privacy policy URL:** https://github.com/kevindesai777/PokeCollect/blob/main/play/PRIVACY.md
   (the same URL goes in App content > Privacy policy; it works once `play/` is pushed to `main`).
-- **Icon, feature graphic, title:** original only. No sprite, Poké Ball or official logo.
+- **Icon, feature graphic, title:** our own drawings only. No sprite, Poké Ball or official logo. The
+  icon is a dex-style device face (lens, lights, bezel), Kevin's choice on 2026-10-26.
+  - App icon (512×512, 32-bit PNG): `play/graphics/icon-512.png`, from `scripts/make_icon.py`
+    (the same spec draws the launcher icon).
+  - Feature graphic (1024×500, 24-bit PNG): `play/graphics/feature-graphic.png`, rendered from
+    `feature-graphic.html` in the same folder.
 - **Screenshots:** Ask-screen shots (text answers, small or no sprites) and the collection list,
-  rather than big artwork.
+  rather than big artwork. They show sprites, so they're never committed: take them from a local
+  build (1080×1920, 24-bit PNG; Play rejects a long side more than twice the short side, so a
+  20:9 phone needs `adb shell wm size 1080x1920` first).
 
 ## Copy rules this follows
 
