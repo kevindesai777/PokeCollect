@@ -61,10 +61,10 @@ regions.
 
 ```text
 PokeCollect is a collection tracker and on-device AI demo for adult card collectors. The listing
-is written for collectors: an original icon and feature graphic with no Pokémon artwork, no kid
-keywords, and screenshots of the Ask screen and the collection list rather than big artwork. The
-app shows small classic sprites next to each species in the list. It has no game, no characters
-to play with, and no content made for children.
+is written for collectors: an icon and feature graphic drawn for this app (a dex-style device, no
+characters, sprites or logos), no kid keywords, and screenshots of the Ask screen and the
+collection list rather than big artwork. The app shows small classic sprites next to each species
+in the list. It has no game, no characters to play with, and no content made for children.
 ```
 
 ## Data safety
