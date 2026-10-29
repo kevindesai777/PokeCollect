@@ -1,5 +1,7 @@
 # PokeCollect
 
+[![Android Weekly #750](https://androidweekly.net/issues/issue-750/badge)](https://androidweekly.net/issues/issue-750)
+
 Demo app for the talk **"Offline by Default: On-Device LLMs in a Kotlin Multiplatform App"**.
 
 A card-collection tracker for Android and iOS (Kotlin Multiplatform, Compose Multiplatform UI)
