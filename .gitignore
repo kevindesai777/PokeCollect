@@ -28,3 +28,6 @@ gemma_pack/src/main/assets/
 keystore.properties
 *.jks
 *.keystore
+
+# Private research notes and product ideas: kept local, never pushed
+docs/research/
