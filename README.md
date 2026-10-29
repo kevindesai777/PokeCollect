@@ -2,6 +2,8 @@
 
 [![Android Weekly #750](https://androidweekly.net/issues/issue-750/badge)](https://androidweekly.net/issues/issue-750)
 
+<a href="https://play.google.com/store/apps/details?id=com.pixel.pokecollect"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60"></a>
+
 Demo app for the talk **"Offline by Default: On-Device LLMs in a Kotlin Multiplatform App"**.
 
 A card-collection tracker for Android and iOS (Kotlin Multiplatform, Compose Multiplatform UI)
@@ -71,3 +73,4 @@ adb push gemma3-1b-it-int4.litertlm /data/local/tmp/llm/
 
 Copyright 2026 Kevin Desai. The code is licensed under the [Apache License 2.0](LICENSE).
 The dataset, fonts, libraries and the Gemma model keep their own licences, listed above.
+Google Play and the Google Play logo are trademarks of Google LLC.
