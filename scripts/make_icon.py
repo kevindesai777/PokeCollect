@@ -13,7 +13,7 @@ Play icon (512x512, 32-bit PNG) with Chrome:
 
 Chrome writes RGB for an opaque page; Play asks for 32-bit, so re-encode it with an alpha channel.
 The design is our own drawing of a dex-style face (lens, three lights, the notched bezel, speaker
-slits), chosen by Kevin on 2026-10-26: no sprite, Poke Ball or official logo (play/listing.md).
+slits), chosen by Kevin on 2026-10-26: no sprite, Poke Ball or official logo.
 """
 import os
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
