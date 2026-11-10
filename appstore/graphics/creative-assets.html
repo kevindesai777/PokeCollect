@@ -2,7 +2,8 @@
 <!-- App Store creative assets (optional, shown on iOS 27+): the product page header (21:9,
      3840×1646) and the search results image (3:2, 3840×2560). ?v=header or ?v=search.
      Same drawing as the Play feature graphic (play/graphics/feature-graphic.html): the launcher
-     icon's dex face, a question and its answer. No sprites, Poké Ball or logos.
+     icon's dex face, "Track your collection, card by card.", the collection's progress and its generations (the dex is the feature; the
+     AI is a helper, Kevin 2026-11-10). Says "dex", never the trademark. No sprites, Poké Ball or logos.
      Laid out on a 1920-wide grid and doubled. The App Store crops these differently per device
      and puts the icon and name under the header, so everything that matters sits in the middle.
      Render: scripts/make_appstore_screenshots.sh (also writes these). -->
@@ -29,12 +30,20 @@
        text-shadow: 8px 8px 0 var(--ink); white-space: nowrap; }
   .tags { display: flex; gap: 18px; }
   .tags span { border: 5px solid var(--ink); border-radius: 14px; padding: 10px 20px; font-size: 26px; box-shadow: 6px 6px 0 var(--ink); }
-  .q { width: 640px; background: var(--ink); color: #fff; border-radius: 26px; padding: 28px 36px; font-size: 42px;
-       font-weight: 500; line-height: 1.25; }
-  .a { width: 600px; background: var(--surface); padding: 26px 36px 30px; }
-  .a .label { font-size: 22px; color: var(--muted); }
-  .a .text { font-size: 54px; font-weight: 700; margin: 6px 0 18px; letter-spacing: -0.02em; white-space: nowrap; }
-  .chips span { display: inline-block; border: 5px solid var(--ink); border-radius: 10px; padding: 5px 14px; font-size: 22px; margin-right: 10px; }
+  .progress { background: #3B6CF6; color: #fff; padding: 26px 34px 32px; }
+  .progress .top { display: flex; align-items: baseline; gap: 14px; white-space: nowrap; }
+  .progress .n { font-size: 92px; font-weight: 700; line-height: 1; letter-spacing: -0.045em; }
+  .progress .of { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; }
+  .progress .pct { margin-left: auto; align-self: center; background: var(--yellow); color: var(--ink);
+                   border: 5px solid var(--ink); border-radius: 12px; padding: 2px 12px; font-size: 30px; font-weight: 700; }
+  .progress .bar { margin-top: 22px; height: 40px; background: #fff; border: 5px solid var(--ink); border-radius: 30px; overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; background: var(--yellow); border-right: 5px solid var(--ink); }
+  .gen { position: absolute; width: 196px; height: 108px; background: var(--surface); padding: 12px 20px; white-space: nowrap;
+         border-radius: 22px; box-shadow: 8px 8px 0 var(--ink); }
+  .gen b { display: block; font-size: 40px; line-height: 1.05; letter-spacing: -0.02em; }
+  .gen span { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 28px; color: var(--muted); }
+  .gen.sel { background: var(--yellow); }
+  .gen.sel span { color: #3d3505; }
 </style>
 </head>
 <body>
@@ -59,25 +68,28 @@
     <circle cx="${lensX + 248}" cy="${lensY - 50}" r="26" fill="#FFCB05" stroke="#000" stroke-width="8"/>
     <circle cx="${lensX + 316}" cy="${lensY - 50}" r="26" fill="#3BD16F" stroke="#000" stroke-width="8"/>
     <g stroke="#000" stroke-width="14" stroke-linecap="round">
-      <path d="M${1700},${H - 60}l50,-50"/><path d="M${1740},${H - 50}l50,-50"/><path d="M${1780},${H - 40}l50,-50"/>
+      <path d="M${1780},${H - 40}l50,-50"/><path d="M${1820},${H - 30}l50,-50"/><path d="M${1860},${H - 20}l50,-50"/>
     </g></svg>`;
 
-  const tags = `<div class="tags mono"><span style="background:var(--green)">ON-DEVICE AI</span><span style="background:var(--pink)">AIRPLANE MODE</span></div>`;
-  const qa = (qx, qy, ax, ay) =>
-    `<div class="q abs" style="left:${qx}px;top:${qy}px">Which Gen 3 cards am I still missing?</div>` +
-    `<div class="a brutal abs" style="left:${ax}px;top:${ay}px"><div class="label mono">ANSWER</div>` +
-    `<div class="text">56 of 135 to go</div>` +
-    `<div class="chips mono"><span style="background:#9BBEFD">GEN 3</span><span style="background:#FF8FB8">MISSING</span></div></div>`;
+  const tags = `<div class="tags mono"><span style="background:var(--yellow)">1,025 SPECIES</span><span style="background:#9BBEFD">GEN 1–9</span></div>`;
+  // The real 395-card collection from the screenshots: 395 of 1,025, and Gen 1–3 as the app shows them
+  const dex = (x, y, w) =>
+    `<div class="progress brutal abs" style="left:${x}px;top:${y}px;width:${w}px">` +
+    `<div class="top"><span class="n">395</span><span class="of">/ 1,025 caught</span><span class="pct">38%</span></div>` +
+    `<div class="bar"><i style="width:38.5%"></i></div></div>` +
+    [["Gen 1", "109/151"], ["Gen 2", "55/100"], ["Gen 3", "79/135"]].map(([g, n], i) =>
+      `<div class="gen brutal${i === 2 ? " sel" : ""}" style="left:${x + i * ((w - 196) / 2)}px;top:${y + 250}px">` +
+      `<b>${g}</b><span>${n}</span></div>`).join("");
 
   art.innerHTML = bg + (v === "search"
-    // 3:2: headline over the bezel, the question and answer below it, all centred
+    // 3:2: headline left, the dex progress right, all inside the centre
     ? `<div class="abs" style="left:1060px;top:150px">${tags}</div>` +
-      `<h1 class="abs" style="left:300px;top:540px">Ask about<br>your collection.</h1>` +
-      qa(300, 860, 990, 800)
-    // 21:9: headline left of centre, question and answer right of centre
+      `<h1 class="abs" style="left:260px;top:640px;font-size:116px">Track your<br>collection,<br>card by card.</h1>` +
+      dex(1130, 680, 640)
+    // 21:9: headline left of centre, the dex progress right of centre
     : `<div class="abs" style="left:1060px;top:110px">${tags}</div>` +
-      `<h1 class="abs" style="left:220px;top:400px;font-size:112px">Ask about<br>your collection.</h1>` +
-      qa(1130, 350, 1180, 490));
+      `<h1 class="abs" style="left:220px;top:360px;font-size:100px">Track your<br>collection,<br>card by card.</h1>` +
+      dex(1130, 380, 640));
 </script>
 </body>
 </html>
