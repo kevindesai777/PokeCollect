@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- App Store iPhone screenshots: the Play story (play/graphics/screenshots.html) at Apple's size.
+     Seven 1206×2622 panels (6.3" Dynamic Island, the size App Store Connect requires), drawn on a
+     1080×2348 grid and scaled by 1206/1080 so the Play measurements carry over.
+     Render with scripts/make_appstore_screenshots.sh (Chrome headless, ?p=1…7 picks a panel).
+
+     The screens are real iOS captures from build/appstore/captures/ (gitignored: they show sprites),
+     1170×2532 from the iPhone 16e (simulator for 2, 3, 5, 6; the phone for 1 and 4, which need
+     Apple Intelligence).
+     The enlarged callouts on top of them are redrawn from the same UI with the app's own tokens
+     (Theme.kt). Background: the launcher icon's dex body (bezel line, lens, lights), our own
+     drawing. No sprite is ever enlarged or used as decoration; no Poké Ball, no logo.
+
+     Rules: the Play ones (no call to action, no "best / #1 / free / new", nothing that reads as
+     one unit crosses a seam) plus Apple's (App Review 2.3.3 / 2.3.10): every panel shows the app in
+     use, no other platform or model name (iOS captures only, no Android or Gemma), 24-bit, no alpha. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_medium.ttf"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_bold.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("../../shared/src/commonMain/composeResources/font/jetbrains_mono_medium.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/jetbrains_mono_bold.ttf"); }
+
+  /* App colours from Theme.kt, icon colours from scripts/make_icon.py */
+  :root { --ink: #000; --bg: #FFFDF2; --surface: #FFF; --muted: #4A4842; --yellow: #F4D738;
+          --blue: #2563EB; --green: #22C55E; --red: #DC0A2D; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 2622px; overflow: hidden; background: #fff; }
+  body { font-family: "Space Grotesk", sans-serif; color: var(--ink); position: relative; }
+  #canvas { position: absolute; left: 0; top: 0; width: 7560px; height: 2348px; overflow: hidden; zoom: 1.116667; }
+  #bg { position: absolute; left: 0; top: 0; }
+  .panel { position: absolute; top: 0; width: 1080px; height: 2348px; }
+  .abs { position: absolute; }
+  svg.i { display: block; fill: var(--ink); }
+
+  /* Headline: two short lines, fitted to 880 px by the script below */
+  .h { position: absolute; left: 84px; top: 104px; font-size: 150px; font-weight: 700; line-height: 0.98;
+       letter-spacing: -0.035em; white-space: nowrap; }
+  .h.light { color: #fff; text-shadow: 7px 7px 0 var(--ink); }
+
+  /* A screen: a real capture in a plain bordered card (no device frame) */
+  .screen { position: absolute; width: 918px; height: 1880px; overflow: hidden; background: var(--bg);
+            border: 10px solid var(--ink); border-radius: 62px; box-shadow: 18px 18px 0 var(--ink);
+            transform-origin: 50% 0; }
+  .screen img { display: block; width: 100%; }
+
+  /* Callouts, redrawn from the app's UI */
+  .card { position: absolute; border: 9px solid var(--ink); border-radius: 44px; box-shadow: 16px 16px 0 var(--ink); }
+
+  .progress { background: var(--blue); color: #fff; padding: 36px 52px 46px; }
+  .progress .top { display: flex; align-items: baseline; gap: 22px; white-space: nowrap; }
+  .progress .n { font-size: 136px; font-weight: 700; line-height: 1; letter-spacing: -0.045em; }
+  .progress .of { font-size: 54px; font-weight: 700; letter-spacing: -0.02em; }
+  .progress .pct { margin-left: auto; align-self: center; background: var(--yellow); color: var(--ink);
+                   border: 6px solid var(--ink); border-radius: 16px; padding: 4px 16px; font-size: 42px; font-weight: 700; }
+  .progress .bar { margin-top: 34px; height: 58px; background: #fff; border: 7px solid var(--ink); border-radius: 40px; overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; background: var(--yellow); border-right: 7px solid var(--ink); }
+  .progress .bar i.full { border-right: 0; }
+
+  .markbtn { height: 172px; background: var(--yellow); display: flex; align-items: center; justify-content: center;
+             gap: 26px; font-size: 80px; font-weight: 700; letter-spacing: -0.02em; }
+  .markbtn svg { width: 96px; height: 96px; }
+
+  .answer { background: var(--surface); padding: 38px 46px 46px; font-size: 76px; font-weight: 700; line-height: 1.12;
+            letter-spacing: -0.03em; white-space: nowrap; }
+  .answer mark { background: var(--yellow); color: inherit; padding: 0 12px; margin-left: -12px; border-radius: 12px; }
+
+  .search { height: 178px; background: var(--surface); display: flex; align-items: center; gap: 30px; padding: 0 24px 0 44px; }
+  .search .mag { width: 88px; height: 88px; }
+  .search .q { flex: 1; font-size: 78px; font-weight: 500; display: flex; align-items: center; }
+  .search .q i { display: inline-block; width: 6px; height: 92px; background: var(--ink); margin-left: 4px; }
+  .search .x { width: 64px; height: 64px; }
+  .search .ask { background: var(--yellow); border: 7px solid var(--ink); border-radius: 28px; padding: 22px 38px;
+                 font-size: 62px; font-weight: 700; }
+
+  .ondevice { background: var(--green); border-width: 8px; border-radius: 28px; box-shadow: 12px 12px 0 var(--ink);
+              padding: 20px 34px 22px 28px; display: flex; align-items: center; gap: 18px; font-size: 56px; font-weight: 700;
+              white-space: nowrap; }
+  .ondevice svg { width: 68px; height: 68px; }
+
+  .gen { position: absolute; width: 290px; height: 160px; background: var(--surface); border: 9px solid var(--ink);
+         border-radius: 34px; box-shadow: 12px 12px 0 var(--ink); padding: 20px 28px; white-space: nowrap; }
+  .gen b { display: block; font-size: 60px; line-height: 1.05; letter-spacing: -0.02em; }
+  .gen span { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 43px; color: var(--muted); }
+  .gen.sel { background: var(--yellow); }
+  .gen.sel span { color: #3d3505; }
+
+  .list { background: var(--surface); border-radius: 36px; padding: 28px 40px 32px 34px; display: grid; gap: 16px;
+          font-size: 58px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+  .list div { display: flex; align-items: center; gap: 22px; }
+
+  /* Stickers that sit on the seams */
+  .fab { position: absolute; width: 330px; height: 330px; background: var(--yellow); border: 11px solid var(--ink);
+         border-radius: 98px; box-shadow: 18px 18px 0 var(--ink); display: grid; place-items: center; }
+  .fab svg { width: 176px; height: 176px; }
+  .fab.white { background: var(--surface); }
+  .fab.round { border-radius: 50%; }
+
+  .box { position: absolute; width: 120px; height: 120px; background: var(--surface); border: 9px solid var(--ink);
+         border-radius: 30px; box-shadow: 9px 9px 0 var(--ink); display: grid; place-items: center; }
+  .box.on { background: var(--green); }
+  .box svg { width: 86px; height: 86px; }
+  .list .box { position: static; width: 70px; height: 70px; border-width: 6px; border-radius: 18px; box-shadow: none; }
+  .list .box svg { width: 50px; height: 50px; }
+
+  .wordmark { position: absolute; font-size: 104px; font-weight: 700; letter-spacing: -0.03em; color: #fff;
+              text-shadow: 6px 6px 0 var(--ink); }
+  .fine { position: absolute; font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: 23px; line-height: 1.45;
+          color: #fff; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mic" viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+    <symbol id="plane" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></symbol>
+    <symbol id="chip" viewBox="0 0 24 24"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></symbol>
+    <!-- The icon's lens and three lights -->
+    <symbol id="lens" viewBox="0 0 300 148">
+      <circle cx="74" cy="74" r="64" fill="#FFF" stroke="#000" stroke-width="10"/>
+      <circle cx="74" cy="74" r="42" fill="#30A7D7" stroke="#000" stroke-width="7"/>
+      <circle cx="58" cy="58" r="13" fill="#D2F1FF"/>
+      <circle cx="184" cy="34" r="18" fill="#FF5A5A" stroke="#000" stroke-width="6"/>
+      <circle cx="230" cy="34" r="18" fill="#FFCB05" stroke="#000" stroke-width="6"/>
+      <circle cx="276" cy="34" r="18" fill="#3BD16F" stroke="#000" stroke-width="6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="canvas">
+  <svg id="bg" width="7560" height="2348" viewBox="0 0 7560 2348"></svg>
+
+  <!-- 1. The challenge -->
+  <section class="panel" style="left:0">
+    <h1 class="h light" style="top:78px;font-size:128px">Track<br>your dex<br>challenge.</h1>
+    <svg class="abs" style="left:490px;top:68px" width="290" height="143"><use href="#lens"/></svg>
+    <div class="screen" style="left:81px;top:600px;transform:rotate(-2deg)">
+      <img src="../../build/appstore/captures/3-collection.png" style="margin-top:-242px" alt="">
+    </div>
+    <div class="card progress" style="left:36px;top:772px;width:1008px;transform:rotate(-2deg)">
+      <div class="top"><span class="n">395</span><span class="of">/ 1,025 caught</span><span class="pct">38%</span></div>
+      <div class="bar"><i style="width:38.5%"></i></div>
+    </div>
+  </section>
+  <!-- 2. Search -->
+  <section class="panel" style="left:1080px">
+    <h1 class="h">Find any<br>card fast.</h1>
+    <div class="screen" style="left:81px;top:600px;transform:rotate(2deg)">
+      <img src="../../build/appstore/captures/5-search.png" style="margin-top:-125px" alt="">
+    </div>
+    <div class="card search" style="left:36px;top:716px;width:1008px;transform:rotate(2deg)">
+      <svg class="i mag"><use href="#search"/></svg>
+      <span class="q">char<i></i></span>
+      <svg class="i x"><use href="#close"/></svg>
+      <span class="ask">Ask</span>
+    </div>
+  </section>
+  <!-- 3. Generation by generation -->
+  <section class="panel" style="left:2160px">
+    <h1 class="h">One gen<br>at a time.</h1>
+    <div class="screen" style="left:81px;top:600px;height:1425px;transform:rotate(-2deg)">
+      <img src="../../build/appstore/captures/6-filter.png" style="margin-top:-400px" alt="">
+    </div>
+  </section>
+  <!-- 4. Add by voice -->
+  <section class="panel" style="left:3240px">
+    <h1 class="h light">Say what<br>you have.</h1>
+    <div class="screen" style="left:100px;top:600px;transform:rotate(2deg)">
+      <img src="../../build/appstore/captures/2-add-cards.png" style="margin-top:-270px" alt="">
+    </div>
+    <div class="card markbtn" style="left:64px;top:2000px;width:960px;height:186px;transform:rotate(2deg)">
+      <svg class="i"><use href="#check"/></svg>Mark 4 caught
+    </div>
+  </section>
+  <!-- 5. Ask -->
+  <section class="panel" style="left:4320px">
+    <h1 class="h">Ask what’s<br>missing.</h1>
+    <div class="screen" style="left:62px;top:600px;transform:rotate(-2deg)">
+      <img src="../../build/appstore/captures/1-ask-answer.png" style="margin-top:-125px" alt="">
+    </div>
+    <div class="card answer" style="left:40px;top:1212px;width:1000px;transform:rotate(-2deg)">
+      You’re missing<br><mark>56 of 135</mark> Gen 3 cards
+    </div>
+  </section>
+  <!-- 6. Offline -->
+  <section class="panel" style="left:5400px">
+    <h1 class="h">Works fully<br>offline.</h1>
+    <div class="screen" style="left:81px;top:600px;transform:rotate(2deg)">
+      <img src="../../build/appstore/captures/4-model-output.png" style="margin-top:-125px" alt="">
+    </div>
+    <div class="card ondevice" style="left:232px;top:634px;transform:rotate(2deg)">
+      <svg class="i"><use href="#chip"/></svg>On-device · no network
+    </div>
+    <div class="card list" style="left:478px;top:1452px;font-size:64px;transform:rotate(-3deg)">
+      <div><span class="box on"><svg class="i"><use href="#check"/></svg></span>No account</div>
+      <div><span class="box on"><svg class="i"><use href="#check"/></svg></span>No ads</div>
+    </div>
+  </section>
+  <!-- 7. The finish. Drawn, not captured: what the progress card and the generation chips show at 100 % -->
+  <section class="panel" style="left:6480px">
+    <h1 class="h light">Finish the<br>whole dex.</h1>
+    <div class="card progress" style="left:50px;top:700px;width:980px;transform:rotate(-2deg)">
+      <div class="top"><span class="n" style="font-size:128px">1,025</span><span class="of" style="font-size:50px">/ 1,025 caught</span><span class="pct">100%</span></div>
+      <div class="bar"><i class="full" style="width:100%"></i></div>
+    </div>
+    <div id="gens"></div>
+    <svg class="abs" style="left:84px;top:2020px" width="250" height="123"><use href="#lens"/></svg>
+    <div class="wordmark" style="left:384px;top:2010px">PokeCollect</div>
+    <p class="fine" style="left:84px;top:2210px">UNOFFICIAL FAN APP. NOT AFFILIATED WITH NINTENDO, CREATURES INC.,<br>GAME FREAK OR THE POKÉMON COMPANY.</p>
+  </section>
+
+  <!-- Seam 1|2: search leads from the list to finding a card -->
+  <div class="fab white" style="left:940px;top:1394px;width:300px;height:300px;transform:rotate(-7deg)"><svg class="i"><use href="#search"/></svg></div>
+
+  <!-- Seam 2|3: the generation chips, with the counts from the capture -->
+  <div class="abs" style="left:1834px;top:2015px;width:1310px;height:160px;transform:rotate(-6deg) scale(1.1)">
+    <div class="gen" style="left:0"><b>All</b><span>395/1025</span></div>
+    <div class="gen" style="left:375px"><b>Gen 1</b><span>109/151</span></div>
+    <div class="gen" style="left:697px"><b>Gen 2</b><span>55/100</span></div>
+    <div class="gen sel" style="left:1019px"><b>Gen 3</b><span>79/135</span></div>
+  </div>
+
+  <!-- Seam 3|4: the mic button leads from the list to voice -->
+  <div class="fab" style="left:3108px;top:1404px;width:300px;height:300px;transform:rotate(6deg)"><svg class="i"><use href="#mic"/></svg></div>
+
+  <!-- Seam 4|5: caught, caught, missing, missing -->
+  <div class="box on" style="left:4044px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+  <div class="box on" style="left:4184px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+  <div class="box" style="left:4336px;top:426px"></div>
+  <div class="box" style="left:4476px;top:426px"></div>
+
+  <!-- Seam 5|6: airplane mode -->
+  <div class="fab round" style="left:5240px;top:1800px;width:320px;height:320px;transform:rotate(-10deg)"><svg class="i"><use href="#plane"/></svg></div>
+
+  <!-- Seam 6|7: everything caught -->
+  <div class="box on" style="left:6204px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+  <div class="box on" style="left:6344px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+  <div class="box on" style="left:6496px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+  <div class="box on" style="left:6636px;top:426px"><svg class="i"><use href="#check"/></svg></div>
+</div>
+
+<script>
+  const N = 7, PW = 1080, W = N * PW, H = 2348, SLANT = 110;
+  // Panel colours: bright above the bezel line, a darker shade below it
+  const COLORS = [["#DC0A2D", "#B3081F"], ["#F4D738", "#E3C11F"], ["#22C55E", "#18A84D"], ["#2563EB", "#1C4AC2"],
+                  ["#FF9F5A", "#F4853B"], ["#FF8FB8", "#F56FA1"], ["#DC0A2D", "#B3081F"]];
+  // The icon's notched bezel, run through all seven panels. It is level at every seam.
+  const BEZEL = "M0,540 H1400 L1454,486 H2760 L2814,540 H3600 L3654,486 H4960 L5014,540 H5760 L5814,486 H7040 L7094,540 H7560";
+
+  // Each panel's field leans across its seams, so every panel carries a slice of its neighbours
+  const quad = k => {
+    const l0 = k === 0 ? 0 : k * PW - SLANT, l1 = k === 0 ? 0 : k * PW + SLANT;
+    const r0 = k === N - 1 ? W : (k + 1) * PW - SLANT, r1 = k === N - 1 ? W : (k + 1) * PW + SLANT;
+    return `${l0},0 ${r0},0 ${r1},${H} ${l1},${H}`;
+  };
+  let svg = "<defs>";
+  for (let k = 0; k < N; k++) svg += `<clipPath id="q${k}"><polygon points="${quad(k)}"/></clipPath>`;
+  svg += "</defs>";
+  for (let k = 0; k < N; k++) {
+    svg += `<g clip-path="url(#q${k})"><rect width="${W}" height="${H}" fill="${COLORS[k][0]}"/>` +
+           `<path d="${BEZEL} V${H} H0 Z" fill="${COLORS[k][1]}"/></g>`;
+  }
+  svg += `<path d="${BEZEL}" fill="none" stroke="#000" stroke-width="12" stroke-linejoin="round"/>`;
+  for (let k = 1; k < N; k++) svg += `<path d="M${k * PW - SLANT},0 L${k * PW + SLANT},${H}" stroke="#000" stroke-width="12"/>`;
+  document.getElementById("bg").innerHTML = svg;
+
+  // Panel 7: all nine generations complete, sizes as in the bundled dataset (pokemon.json)
+  const GEN_SIZES = [151, 100, 135, 107, 156, 72, 88, 96, 120];
+  document.getElementById("gens").innerHTML = GEN_SIZES.map((n, i) =>
+    `<div class="gen" style="left:${71 + (i % 3) * 324}px;top:${1200 + Math.floor(i / 3) * 236}px">` +
+    `<b>Gen ${i + 1}</b><span>${n}/${n}</span></div>` +
+    `<div class="box on" style="left:${71 + (i % 3) * 324 + 206}px;top:${1200 + Math.floor(i / 3) * 236 - 26}px;` +
+    `width:84px;height:84px;border-width:7px;border-radius:22px;box-shadow:6px 6px 0 #000">` +
+    `<svg class="i" style="width:58px;height:58px"><use href="#check"/></svg></div>`).join("");
+
+  // ?p=1…7 shows one panel in a 1206×2622 window; no parameter shows the whole panorama
+  const p = +new URLSearchParams(location.search).get("p");
+  if (p) document.getElementById("canvas").style.transform = `translateX(${-(p - 1) * PW}px)`;
+
+  // Shrink a headline until its longer line fits
+  document.fonts.ready.then(() => document.querySelectorAll(".h").forEach(h => {
+    let size = parseFloat(getComputedStyle(h).fontSize);
+    while (h.offsetWidth > 880 && size > 60) h.style.fontSize = (size -= 2) + "px";
+  }));
+</script>
+</body>
+</html>

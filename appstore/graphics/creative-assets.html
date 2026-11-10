@@ -1,0 +1,83 @@
+<!doctype html>
+<!-- App Store creative assets (optional, shown on iOS 27+): the product page header (21:9,
+     3840×1646) and the search results image (3:2, 3840×2560). ?v=header or ?v=search.
+     Same drawing as the Play feature graphic (play/graphics/feature-graphic.html): the launcher
+     icon's dex face, a question and its answer. No sprites, Poké Ball or logos.
+     Laid out on a 1920-wide grid and doubled. The App Store crops these differently per device
+     and puts the icon and name under the header, so everything that matters sits in the middle.
+     Render: scripts/make_appstore_screenshots.sh (also writes these). -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_medium.ttf"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/space_grotesk_bold.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 700; src: url("../../shared/src/commonMain/composeResources/font/jetbrains_mono_bold.ttf"); }
+
+  :root { --red: #DC0A2D; --dark-red: #B3081F; --ink: #000; --surface: #FFF; --yellow: #F4D738;
+          --green: #22C55E; --pink: #FF8FB8; --muted: #4A4842; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--red); overflow: hidden; }
+  body { font-family: "Space Grotesk", sans-serif; color: var(--ink); }
+  #art { position: relative; width: 1920px; zoom: 2; overflow: hidden; background: var(--red); }
+  .mono { font-family: "JetBrains Mono", monospace; font-weight: 700; letter-spacing: 0.04em; }
+  .brutal { border: 5px solid var(--ink); border-radius: 26px; box-shadow: 11px 11px 0 var(--ink); }
+  svg.body { position: absolute; left: 0; top: 0; }
+  .abs { position: absolute; }
+
+  h1 { font-size: 132px; font-weight: 700; letter-spacing: -0.035em; line-height: 0.98; color: #fff;
+       text-shadow: 8px 8px 0 var(--ink); white-space: nowrap; }
+  .tags { display: flex; gap: 18px; }
+  .tags span { border: 5px solid var(--ink); border-radius: 14px; padding: 10px 20px; font-size: 26px; box-shadow: 6px 6px 0 var(--ink); }
+  .q { width: 640px; background: var(--ink); color: #fff; border-radius: 26px; padding: 28px 36px; font-size: 42px;
+       font-weight: 500; line-height: 1.25; }
+  .a { width: 600px; background: var(--surface); padding: 26px 36px 30px; }
+  .a .label { font-size: 22px; color: var(--muted); }
+  .a .text { font-size: 54px; font-weight: 700; margin: 6px 0 18px; letter-spacing: -0.02em; white-space: nowrap; }
+  .chips span { display: inline-block; border: 5px solid var(--ink); border-radius: 10px; padding: 5px 14px; font-size: 22px; margin-right: 10px; }
+</style>
+</head>
+<body>
+<div id="art"></div>
+<script>
+  const v = new URLSearchParams(location.search).get("v") || "header";
+  const H = v === "search" ? 1280 : 823;
+  const art = document.getElementById("art");
+  art.style.height = H + "px";
+  document.documentElement.style.height = document.body.style.height = H * 2 + "px";
+
+  // The dex body: bright top, darker below a notched bezel, lens and lights, speaker slits
+  const bezel = v === "search" ? 430 : 300;
+  const lensY = v === "search" ? 210 : 150, lensX = v === "search" ? 300 : 360;
+  const bg = `<svg class="body" width="1920" height="${H}" viewBox="0 0 1920 ${H}">
+    <path d="M0,${bezel}H880L940,${bezel - 60}H1920V${H}H0Z" fill="#B3081F"/>
+    <path d="M0,${bezel}H880L940,${bezel - 60}H1920" fill="none" stroke="#000" stroke-width="14" stroke-linejoin="round"/>
+    <circle cx="${lensX}" cy="${lensY}" r="100" fill="#FFF" stroke="#000" stroke-width="14"/>
+    <circle cx="${lensX}" cy="${lensY}" r="66" fill="#30A7D7" stroke="#000" stroke-width="10"/>
+    <circle cx="${lensX - 24}" cy="${lensY - 24}" r="20" fill="#D2F1FF"/>
+    <circle cx="${lensX + 180}" cy="${lensY - 50}" r="26" fill="#FF5A5A" stroke="#000" stroke-width="8"/>
+    <circle cx="${lensX + 248}" cy="${lensY - 50}" r="26" fill="#FFCB05" stroke="#000" stroke-width="8"/>
+    <circle cx="${lensX + 316}" cy="${lensY - 50}" r="26" fill="#3BD16F" stroke="#000" stroke-width="8"/>
+    <g stroke="#000" stroke-width="14" stroke-linecap="round">
+      <path d="M${1700},${H - 60}l50,-50"/><path d="M${1740},${H - 50}l50,-50"/><path d="M${1780},${H - 40}l50,-50"/>
+    </g></svg>`;
+
+  const tags = `<div class="tags mono"><span style="background:var(--green)">ON-DEVICE AI</span><span style="background:var(--pink)">AIRPLANE MODE</span></div>`;
+  const qa = (qx, qy, ax, ay) =>
+    `<div class="q abs" style="left:${qx}px;top:${qy}px">Which Gen 3 cards am I still missing?</div>` +
+    `<div class="a brutal abs" style="left:${ax}px;top:${ay}px"><div class="label mono">ANSWER</div>` +
+    `<div class="text">56 of 135 to go</div>` +
+    `<div class="chips mono"><span style="background:#9BBEFD">GEN 3</span><span style="background:#FF8FB8">MISSING</span></div></div>`;
+
+  art.innerHTML = bg + (v === "search"
+    // 3:2: headline over the bezel, the question and answer below it, all centred
+    ? `<div class="abs" style="left:1060px;top:150px">${tags}</div>` +
+      `<h1 class="abs" style="left:300px;top:540px">Ask about<br>your collection.</h1>` +
+      qa(300, 860, 990, 800)
+    // 21:9: headline left of centre, question and answer right of centre
+    : `<div class="abs" style="left:1060px;top:110px">${tags}</div>` +
+      `<h1 class="abs" style="left:220px;top:400px;font-size:112px">Ask about<br>your collection.</h1>` +
+      qa(1130, 350, 1180, 490));
+</script>
+</body>
+</html>
