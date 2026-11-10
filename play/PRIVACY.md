@@ -1,17 +1,19 @@
 # PokeCollect privacy policy
 
-*Last updated: 20 October 2026*
+*Last updated: 10 November 2026*
 
 PokeCollect is a free app for keeping track of a Pokémon card collection. I'm Kevin Desai, and I
-made it. This policy covers the PokeCollect app for Android, as distributed on Google Play.
+made it. This policy covers the PokeCollect app for Android, as distributed on Google Play, and
+for iPhone, as distributed on the App Store. The sections up to "Deleting your data" describe the
+Android app; [On iPhone](#on-iphone) covers what's different there.
 
 ## The short version
 
-PokeCollect collects no data and shares no data.
+PokeCollect collects no data and shares no data, on Android and on iPhone.
 
-Everything the app does happens on your phone. The app can't connect to the internet: it doesn't
-have Android's internet permission. There are no accounts, no ads, no analytics and no crash
-reporting. I never receive anything from the app.
+Everything the app does happens on your phone. The app doesn't connect to the internet (on
+Android it doesn't even have the internet permission). There are no accounts, no ads, no analytics
+and no crash reporting. I never receive anything from the app.
 
 ## What stays on your phone
 
@@ -69,6 +71,26 @@ storage. If Android backed it up, you can delete that backup in your Google acco
 settings.
 
 I don't hold any of your data, so there's nothing to delete on my side.
+
+## On iPhone
+
+The iPhone app works the same way: your collection, your questions and your voice stay on your
+iPhone, and the app collects nothing. The differences:
+
+- **The AI model is Apple's.** Questions are understood by Apple's on-device foundation model,
+  part of Apple Intelligence. It comes with iOS, so PokeCollect downloads nothing, and the model
+  runs on your iPhone. If your iPhone doesn't have Apple Intelligence, questions are switched off
+  and nothing is sent anywhere instead.
+- **Speech recognition is Apple's.** iOS asks you for the microphone and for speech recognition.
+  The app asks Apple's speech recognizer to work on the device only, so your audio stays on your
+  iPhone. iOS's own permission prompt is the same for every app and mentions sending audio to
+  Apple; PokeCollect doesn't use that. The app doesn't record or keep audio, and doesn't keep the
+  text.
+- **Network.** The app makes no network connections.
+- **Backups.** If iCloud Backup is on, iOS may include your collection database in your iPhone's
+  backup, under your iCloud settings. I never see it.
+- **Deleting your data.** Delete the app and your collection goes with it. To remove it from a
+  backup, use your iCloud backup settings.
 
 ## Children
 
