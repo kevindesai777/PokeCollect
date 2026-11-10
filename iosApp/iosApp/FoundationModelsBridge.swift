@@ -80,12 +80,17 @@ final class FoundationModelsBridge: NSObject, NativeLanguageModel {
 
     private static func describe(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> String {
         switch reason {
+        // Shown on the Ask screen. The App Store can't keep the app off phones without Apple
+        // Intelligence, so say what still works: card names, browsing, simple questions.
         case .deviceNotEligible:
-            return "This device can't run Apple Intelligence."
+            return "Questions in your own words need Apple Intelligence (iPhone 15 Pro or newer). " +
+                "You can still add cards by name and browse your collection."
         case .appleIntelligenceNotEnabled:
-            return "Turn on Apple Intelligence in Settings to use on-device questions."
+            return "Questions in your own words need Apple Intelligence. Turn it on in Settings. " +
+                "You can still add cards by name and browse your collection."
         case .modelNotReady:
-            return "The on-device model is still downloading. Try again in a few minutes."
+            return "Apple Intelligence is still downloading its model. Try again in a few minutes. " +
+                "You can still add cards by name and browse your collection."
         @unknown default:
             return "Apple Foundation Models is unavailable (\(reason))."
         }

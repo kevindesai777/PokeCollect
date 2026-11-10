@@ -107,6 +107,16 @@ val licenseTexts = tasks.register<Sync>("licenseTexts") {
     into(layout.buildDirectory.dir("licenseResources/files/licenses"))
 }
 
+// The iOS app carries the same texts minus Gemma (Apple's model is part of iOS) and with its own
+// NOTICE (iosApp/NOTICE: no Gemma or Play sections).
+val iosLicenseTexts = tasks.register<Sync>("iosLicenseTexts") {
+    from(rootProject.file("licenses")) { exclude("Gemma-Terms-of-Use.txt") }
+    from(rootProject.file("LICENSE")) { rename { "Apache-2.0.txt" } }
+    from(rootProject.file("iosApp/NOTICE")) { rename { "NOTICE.txt" } }
+    into(layout.buildDirectory.dir("iosLicenseResources/files/licenses"))
+}
+
 compose.resources {
     customDirectory("androidMain", layout.dir(licenseTexts.map { it.destinationDir.parentFile.parentFile }))
+    customDirectory("iosMain", layout.dir(iosLicenseTexts.map { it.destinationDir.parentFile.parentFile }))
 }

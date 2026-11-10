@@ -261,7 +261,9 @@ class AskViewModel(
         } catch (e: InvalidQueryException) {
             session.update { it.copy(failure = AskFailure(input, e.message ?: "Invalid query", e.rawOutput)) }
         } catch (e: Exception) {
-            session.update { it.copy(failure = AskFailure(input, e.message ?: e::class.simpleName.orEmpty(), null)) }
+            // A model that never loaded (iOS without Apple Intelligence) explains itself better than its generate error.
+            val reason = (modelStatus.value as? ModelStatus.Unavailable)?.reason ?: e.message ?: e::class.simpleName.orEmpty()
+            session.update { it.copy(failure = AskFailure(input, reason, null)) }
         } finally {
             session.update { it.copy(thinking = false) }
         }

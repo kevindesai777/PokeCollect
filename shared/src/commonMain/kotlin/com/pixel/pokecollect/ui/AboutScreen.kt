@@ -57,7 +57,8 @@ internal data class LicenseText(val title: String, val file: String)
 /**
  * The full texts the app carries. Android: the NOTICE, the Gemma Terms of Use (required when Gemma
  * is redistributed), the Apache License and the font licences, copied in at build time (task
- * `licenseTexts` in shared/build.gradle.kts). iOS: none yet.
+ * `licenseTexts` in shared/build.gradle.kts). iOS: the same minus Gemma, with its own NOTICE (task
+ * `iosLicenseTexts`).
  */
 internal expect val bundledLicenses: List<LicenseText>
 
@@ -116,7 +117,8 @@ fun AboutScreen(onBack: () -> Unit) {
                         "speech is recognized on the device and the model runs on the device.",
                 )
                 Link(Credit("Privacy policy", "", PRIVACY_POLICY_URL))
-                Link(Credit("Terms of use", "Including the restrictions on using Gemma.", TERMS_URL))
+                // Gemma ships only in the Android app.
+                Link(Credit("Terms of use", if (modelCredits.isNotEmpty()) "Including the restrictions on using Gemma." else "", TERMS_URL))
             }
         }
         if (modelCredits.isNotEmpty()) {
