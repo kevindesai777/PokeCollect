@@ -2,8 +2,8 @@
 
 [![Android Weekly #750](https://androidweekly.net/issues/issue-750/badge)](https://androidweekly.net/issues/issue-750)
 
-<a href="https://play.google.com/store/apps/details?id=com.pixel.pokecollect"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60"></a>
-<a href="https://apps.apple.com/app/pokecollect/id6833115673"><img alt="Download on the App Store" src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us" height="40" hspace="10" vspace="10"></a>
+<a href="https://play.google.com/store/apps/details?id=com.pixel.pokecollect"><img alt="Get it on Google Play" src="play/graphics/google-play-badge.png" height="40"></a>&nbsp;&nbsp;
+<a href="https://apps.apple.com/app/pokecollect/id6833115673"><img alt="Download on the App Store" src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us" height="40"></a>
 
 Demo app for the talk **"Offline by Default: On-Device LLMs in a Kotlin Multiplatform App"**.
 
