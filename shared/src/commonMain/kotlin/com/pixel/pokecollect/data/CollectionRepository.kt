@@ -23,7 +23,7 @@ class CollectionRepository(private val dao: PokemonDao) {
 
     /** Live results for a planned query; re-emits when the collection changes. */
     fun observeMatching(query: CollectionQuery): Flow<List<PokemonWithCollection>> =
-        dao.observeMatching(query.generation, query.type, query.caught)
+        dao.observeMatching(query.generations.isEmpty(), query.generations, query.type, query.caught)
 
     suspend fun catalog(): Catalog {
         seeder.seedIfNeeded()

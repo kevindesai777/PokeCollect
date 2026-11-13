@@ -4,6 +4,16 @@ internal const val ANY = "any"
 internal const val HAVE = "have"
 internal const val MISSING = "missing"
 
+/**
+ * Several generations travel as one wire value ("3,6"), so a question naming two generations offers
+ * the model one option holding both, not a choice between them. A single generation stays "3".
+ */
+internal fun generationsToWire(generations: List<Int>): String =
+    if (generations.isEmpty()) ANY else generations.distinct().sorted().joinToString(",")
+
+internal fun generationsFromWire(wire: String): List<Int> =
+    if (wire == ANY) emptyList() else wire.split(',').map { it.trim().toInt() }
+
 /** The question names something the dataset can't answer, e.g. a generation that hasn't shipped. */
 class UnsupportedQuestionException(message: String) : Exception(message)
 
@@ -67,12 +77,15 @@ internal object QuestionCues : Narrower {
 
         return Options(
             intent = if (COUNT.containsMatchIn(text)) listOf(QueryIntent.COUNT.name.lowercase()) else all.intent,
-            generation = narrowed(exactGenerations.map { it.toString() }, fuzzyGenerations.map { it.toString() }),
+            // Every generation named belongs to one value: "gen 3 and gen 6" means both, never a choice.
+            generation = narrowed(exactGenerations.asWireOption(), fuzzyGenerations.asWireOption()),
             type = narrowed(exactTypes, fuzzyTypes),
             // Ownership is discussed: the model must decide which way (negation is its job).
             caught = if (mentionsOwnership(text)) listOf(HAVE, MISSING) else listOf(ANY),
         )
     }
+
+    private fun List<Int>.asWireOption() = if (isEmpty()) emptyList() else listOf(generationsToWire(this))
 
     /** Exact mentions decide; spelling-corrected mentions only offer; nothing means "any". */
     private fun narrowed(exact: List<String>, fuzzy: List<String>): List<String> = when {
@@ -96,25 +109,50 @@ internal object QuestionCues : Narrower {
             """don't|dont|doesn't|doesnt|didn't|didnt|haven't|havent|hasn't|hasnt|aren't|arent)\b|\b(yet|still) to\b""",
     )
 
-    // --- Generations: "gen 3", "gen3", "generation 3", "3rd gen", "third generation", "generation three", "gen iii"
+    // --- Generations: "gen 3", "gen3", "generation 3", "3rd gen", "third generation", "generation three", "gen iii",
+    // lists ("gen 3 and 6", "gens 3, 4 or 6", "third and sixth generations") and ranges ("gen 3-6",
+    // "gens 3 to 6", "between gen 3 and 6"). A card has one generation, so any list means all of them.
 
     private val numberWords = listOf("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
     private val ordinalWords = listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
     private val romanNumerals = listOf("i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x")
-    private const val GEN = "(?:generation|gen)"
+    private const val GEN = "(?:generations?|gens?)"
 
-    private val digitAfter = Regex("""\b$GEN\s*[-#]?\s*(\d{1,2})\b""")
-    private val digitBefore = Regex("""\b(\d{1,2})(?:st|nd|rd|th)?[\s-]*${GEN}s?\b""")
-    private val ordinalBefore = Regex("""\b(${ordinalWords.joinToString("|")})[\s-]*${GEN}s?\b""")
-    private val wordAfter = Regex("""\b$GEN\s+(${numberWords.joinToString("|")})\b""")
-    private val romanAfter = Regex("""\b$GEN\s+(${romanNumerals.sortedByDescending { it.length }.joinToString("|")})\b""")
+    /** "3, 4 and 6", "3 or 6", "3 & 6", "3/6". Needs a separator: "gen 3 25 cards" is not a list. */
+    private const val AND = """\s*(?:,\s*(?:(?:and|or)\s+)?|&\s*|\+\s*|/\s*|\b(?:and|or)\s+)"""
+
+    private fun series(item: String, more: String = item) = """($item(?:$AND$more)*)"""
+    private fun alternatives(words: List<String>) = words.sortedByDescending { it.length }.joinToString("|")
+
+    private val digitsAfter = Regex("""\b$GEN\s*[-#]?\s*${series("""\d{1,2}\b""")}""")
+    private val digitsBefore = Regex("""\b${series("""\d{1,2}(?:st|nd|rd|th)?\b""")}[\s-]*$GEN\b""")
+    private val ordinalsBefore = Regex("""\b${series("""(?:${alternatives(ordinalWords)})\b""")}[\s-]*$GEN\b""")
+    private val wordsAfter = Regex("""\b$GEN\s+${series("""(?:${alternatives(numberWords)})\b""")}""")
+
+    // A lone "i" after the first numeral is the pronoun ("gen iv and i ..."), not Gen 1.
+    private val romanAfter = Regex(
+        """\b$GEN\s+${series("""(?:${alternatives(romanNumerals)})\b""", """(?:${alternatives(romanNumerals - "i")})\b""")}""",
+    )
+
+    private const val TO = """\s*(?:-|–|—|\bto\b|\bthrough\b|\bthru\b|\buntil\b)\s*"""
+    private val rangeAfter = Regex("""\b$GEN\s*[-#]?\s*(\d{1,2})$TO(?:$GEN\s*[-#]?\s*)?(\d{1,2})\b""")
+    private val rangeBetween = Regex("""\bbetween\s+$GEN\s*[-#]?\s*(\d{1,2})\s+and\s+(?:$GEN\s*[-#]?\s*)?(\d{1,2})\b""")
+
+    private val digits = Regex("""\d+""")
+    private fun wordsOf(text: String, words: List<String>) =
+        Regex("""\b(${alternatives(words)})\b""").findAll(text).map { words.indexOf(it.value) + 1 }
 
     private fun generationsMentioned(text: String): List<Int> = buildList {
-        digitAfter.findAll(text).forEach { add(it.groupValues[1].toInt()) }
-        digitBefore.findAll(text).forEach { add(it.groupValues[1].toInt()) }
-        ordinalBefore.findAll(text).forEach { add(ordinalWords.indexOf(it.groupValues[1]) + 1) }
-        wordAfter.findAll(text).forEach { add(numberWords.indexOf(it.groupValues[1]) + 1) }
-        romanAfter.findAll(text).forEach { add(romanNumerals.indexOf(it.groupValues[1]) + 1) }
+        digitsAfter.findAll(text).forEach { m -> digits.findAll(m.groupValues[1]).forEach { add(it.value.toInt()) } }
+        digitsBefore.findAll(text).forEach { m -> digits.findAll(m.groupValues[1]).forEach { add(it.value.toInt()) } }
+        ordinalsBefore.findAll(text).forEach { addAll(wordsOf(it.groupValues[1], ordinalWords)) }
+        wordsAfter.findAll(text).forEach { addAll(wordsOf(it.groupValues[1], numberWords)) }
+        romanAfter.findAll(text).forEach { addAll(wordsOf(it.groupValues[1], romanNumerals)) }
+        (rangeAfter.findAll(text) + rangeBetween.findAll(text)).forEach { m ->
+            val (from, to) = m.destructured
+            val ends = listOf(from.toInt(), to.toInt())
+            addAll(ends.min()..ends.max())
+        }
     }
 
     // --- Types: the name or its plural ("dragons", "fairies"), as a whole word.

@@ -115,6 +115,24 @@ class QueryPlannerTest {
     }
 
     @Test
+    fun twoGenerationsReachTheModelAsOneOption() = runTest {
+        val model = FakeModel("""{"intent":"list","generation":"3,6","type":"any","caught":"missing"}""")
+        val planned = QueryPlanner(model).plan("show me cards from gen 3 and gen 6 that i am missing", catalog)
+        assertEquals(CollectionQuery(QueryIntent.LIST, generations = listOf(3, 6), type = null, caught = false), planned.query)
+        val properties = Json.parseToJsonElement(model.lastSchema!!).jsonObject["properties"]!!.jsonObject
+        assertEquals("""["3,6"]""", properties["generation"]!!.jsonObject["enum"].toString())
+    }
+
+    @Test
+    fun oneOfTwoNamedGenerationsIsRejected() = runTest {
+        // What Gemma did before: the schema offered "3" or "6", and it picked "3".
+        val model = FakeModel("""{"intent":"list","generation":"3","type":"any","caught":"missing"}""")
+        assertFailsWith<InvalidQueryException> {
+            QueryPlanner(model).plan("show me cards from gen 3 and gen 6 that i am missing", catalog)
+        }
+    }
+
+    @Test
     fun rejectsAValueTheQuestionDidNotAllow() = runTest {
         // Only possible without constrained decoding (or with a runtime that ignores the schema).
         val model = FakeModel("""{"intent":"list","generation":"3","type":"fire","caught":"missing"}""")

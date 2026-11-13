@@ -103,7 +103,7 @@ class ModelEvalTest {
                     val got = planned?.query
                     val hits = listOf(
                         got?.intent == expected.intent,
-                        got?.generation == expected.generation,
+                        got?.generations == expected.generations,
                         got?.type == expected.type,
                         got?.caught == expected.caught,
                     )
@@ -166,7 +166,7 @@ class ModelEvalTest {
                 val got: CollectionQuery? = planned?.query
                 val hits = listOf(
                     got?.intent == expected.intent,
-                    got?.generation == expected.generation,
+                    got?.generations == expected.generations,
                     got?.type == expected.type,
                     got?.caught == expected.caught,
                 )

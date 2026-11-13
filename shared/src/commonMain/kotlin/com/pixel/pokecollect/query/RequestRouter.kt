@@ -32,5 +32,5 @@ object RequestRouter {
         "count", "tell", "give", "where", "who",
     )
 
-    private val QueryWords = setOf("gen", "generation", "generations", "type", "types", "missing", "collection")
+    private val QueryWords = setOf("gen", "gens", "generation", "generations", "type", "types", "missing", "collection")
 }

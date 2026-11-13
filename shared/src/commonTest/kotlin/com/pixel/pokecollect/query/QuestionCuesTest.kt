@@ -38,6 +38,41 @@ class QuestionCuesTest {
     }
 
     @Test
+    fun severalGenerationsAreOneValueNotAChoice() {
+        listOf(
+            "show me cards from gen 3 and gen 6 that i am missing",
+            "gen 3 and 6 cards i'm missing",
+            "gens 3 or 6",
+            "generations 6 & 3",
+            "gen 3/6 water types",
+            "3rd and 6th gen",
+            "third and sixth generations",
+            "gen three and six",
+            "gen iii and vi",
+        ).forEach { assertEquals(listOf("3,6"), options(it).generation, it) }
+        assertEquals(listOf("1,4,7"), options("gen 1, 4, and 7 fire types").generation)
+    }
+
+    @Test
+    fun generationRanges() {
+        listOf("gen 3-6", "gens 3 to 6", "gen 3 through gen 6", "between gen 3 and 6", "generations 6–3")
+            .forEach { assertEquals(listOf("3,4,5,6"), options(it).generation, it) }
+    }
+
+    @Test
+    fun generationListsNeedASeparatorAndANumeral() {
+        assertEquals(listOf("4"), options("gen iv and i have which ones").generation) // "i" is the pronoun
+        assertEquals(listOf("3"), options("gen 3 25 cards").generation)
+        assertEquals(listOf("2"), options("gen 2 and what else").generation)
+    }
+
+    @Test
+    fun aListWithAnUnshippedGenerationIsRejected() {
+        assertFailsWith<UnsupportedQuestionException> { options("gen 9 and 10 cards") }
+        assertFailsWith<UnsupportedQuestionException> { options("gens 8 to 10") }
+    }
+
+    @Test
     fun typePluralsAndAbsence() {
         assertEquals(listOf("dragon"), options("how many gen-2 dragons").type)
         assertEquals(listOf("fairy"), options("fairies from generation seven").type)
@@ -92,6 +127,7 @@ class QuestionCuesTest {
     @Test
     fun determinedOnlyWhenEveryFieldHasOneOption() {
         assertEquals(WireQuery("count", "8", ANY, ANY), options("how many cards are in gen 8").determined())
+        assertEquals(WireQuery("count", "3,6", ANY, ANY), options("how many gen 3 and gen 6 cards are there").determined())
         assertNull(options("show me everything").determined())
     }
 }

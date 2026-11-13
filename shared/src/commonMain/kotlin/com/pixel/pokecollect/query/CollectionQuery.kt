@@ -5,18 +5,23 @@ import kotlinx.serialization.Serializable
 
 /**
  * What the model is allowed to say. It never answers the question itself; it only fills in this
- * object, and Room does the rest. Every field is required in the schema, with null meaning "any".
+ * object, and Room does the rest. Null (or no generations) means "any".
  */
 @Serializable
 data class CollectionQuery(
     val intent: QueryIntent,
-    val generation: Int?,
+    /** Ascending and distinct; empty means every generation. "Gen 3 and 6" is two entries. */
+    val generations: List<Int>,
     val type: String?,
     val caught: Boolean?,
 ) {
+    /** One generation, or any: how almost every question (and every few-shot example) reads. */
+    constructor(intent: QueryIntent, generation: Int?, type: String?, caught: Boolean?) :
+        this(intent, listOfNotNull(generation), type, caught)
+
     /** The non-null filters, in display order, for the "understood as" card. */
     fun filters(): List<Pair<String, String>> = buildList {
-        if (generation != null) add("generation" to generation.toString())
+        if (generations.isNotEmpty()) add("generation" to generations.joinToString(", "))
         if (type != null) add("type" to type)
         if (caught != null) add("caught" to caught.toString())
     }

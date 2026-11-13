@@ -117,7 +117,7 @@ class QueryPlanner internal constructor(
         }
         return CollectionQuery(
             intent = QueryIntent.entries.first { it.name.lowercase() == check("intent", wire.intent, options.intent) },
-            generation = check("generation", wire.generation, options.generation).takeIf { it != ANY }?.toInt(),
+            generations = generationsFromWire(check("generation", wire.generation, options.generation)),
             type = check("type", wire.type, options.type).takeIf { it != ANY },
             caught = when (check("caught", labels.fromWire(wire.caught), options.caught)) {
                 HAVE -> true
@@ -169,7 +169,7 @@ class QueryPlanner internal constructor(
                     WireQuery.serializer(),
                     WireQuery(
                         intent = q.intent.name.lowercase(),
-                        generation = q.generation?.toString() ?: ANY,
+                        generation = generationsToWire(q.generations),
                         type = q.type ?: ANY,
                         caught = labels.toWire(
                             when (q.caught) {

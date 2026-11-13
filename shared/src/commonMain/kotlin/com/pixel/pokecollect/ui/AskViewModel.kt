@@ -320,9 +320,17 @@ class AskViewModel(
     }
 }
 
+/** "3", "3 and 6", "3, 4 and 6"; a run of three or more reads as a range, "3–6". */
+internal fun generationList(generations: List<Int>): String = when {
+    generations.size >= 3 && generations.zipWithNext().all { (a, b) -> b == a + 1 } ->
+        "${generations.first()}–${generations.last()}"
+    generations.size == 1 -> generations.single().toString()
+    else -> generations.dropLast(1).joinToString(", ") + " and " + generations.last()
+}
+
 internal fun summarize(query: CollectionQuery, matching: Int, inScope: Int): String {
     val scope = listOfNotNull(
-        query.generation?.let { "Gen $it" },
+        query.generations.takeIf { it.isNotEmpty() }?.let { "Gen ${generationList(it)}" },
         query.type?.let { it.replaceFirstChar(Char::uppercaseChar) + "-type" },
     ).joinToString(" ")
     fun cards(n: Int) = (if (scope.isEmpty()) "" else "$scope ") + if (n == 1) "card" else "cards"

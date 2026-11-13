@@ -104,7 +104,7 @@ class FoundationModelsEvalTest {
             val got = planned?.query
             val hits = listOf(
                 got?.intent == expected.intent,
-                got?.generation == expected.generation,
+                got?.generations == expected.generations,
                 got?.type == expected.type,
                 got?.caught == expected.caught,
             )
@@ -176,7 +176,7 @@ class FoundationModelsEvalTest {
 
     private fun expectedInMenu(options: Options, expected: CollectionQuery): Boolean =
         expected.intent.name.lowercase() in options.intent &&
-            (expected.generation?.toString() ?: ANY) in options.generation &&
+            generationsToWire(expected.generations) in options.generation &&
             (expected.type ?: ANY) in options.type &&
             when (expected.caught) {
                 true -> HAVE

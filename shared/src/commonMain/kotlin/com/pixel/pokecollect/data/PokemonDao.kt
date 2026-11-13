@@ -18,18 +18,26 @@ abstract class PokemonDao {
     )
     abstract fun observeAll(): Flow<List<PokemonWithCollection>>
 
-    /** Answers a [com.pixel.pokecollect.query.CollectionQuery]. A null argument means "any". */
+    /**
+     * Answers a [com.pixel.pokecollect.query.CollectionQuery]. A null argument means "any"; so does
+     * [anyGeneration], since an empty [generations] list can't say it inside SQL.
+     */
     @Query(
         """
         SELECT p.*, COALESCE(c.caught, 0) AS caught
         FROM pokemon p LEFT JOIN collection c ON c.pokemonId = p.id
-        WHERE (:generation IS NULL OR p.generation = :generation)
+        WHERE (:anyGeneration OR p.generation IN (:generations))
           AND (:type IS NULL OR p.type1 = :type OR p.type2 = :type)
           AND (:caught IS NULL OR COALESCE(c.caught, 0) = :caught)
         ORDER BY p.id
         """
     )
-    abstract fun observeMatching(generation: Int?, type: String?, caught: Boolean?): Flow<List<PokemonWithCollection>>
+    abstract fun observeMatching(
+        anyGeneration: Boolean,
+        generations: List<Int>,
+        type: String?,
+        caught: Boolean?,
+    ): Flow<List<PokemonWithCollection>>
 
     @Query("SELECT * FROM pokemon ORDER BY id")
     abstract suspend fun allPokemon(): List<PokemonEntity>
