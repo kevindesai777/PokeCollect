@@ -1,21 +1,12 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# R8 rules for the release build. Libraries that ship their own rules (Room, kotlinx.serialization,
+# Compose, sqlite-bundled, coroutines) need nothing here.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# LiteRT-LM ships no consumer rules, and liblitertlm_jni.so looks up its Kotlin classes, fields
+# and callback methods by name (config objects in, messages and benchmark info out). Renaming or
+# removing any of them fails at runtime, not at build time, so the whole package stays as it is.
+-keep class com.google.ai.edge.litertlm.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Readable crash stack traces: keep line numbers, hide the source file names. Play maps the
+# rest back with the mapping file that the bundle carries.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

@@ -62,8 +62,9 @@ android {
     }
     buildTypes {
         release {
-            // Off for the first release: R8 against LiteRT-LM's JNI classes isn't tested yet.
-            isMinifyEnabled = false
+            // R8 shrinks and renames; Play flags bundles that aren't obfuscated. LiteRT-LM is
+            // kept whole in proguard-rules.pro (its native library calls it by name).
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
