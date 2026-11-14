@@ -1,11 +1,19 @@
 package com.pixel.pokecollect.ui.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -17,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.itdeveapps.neubrutalism.theme.neuBorder
 import com.itdeveapps.neubrutalism.theme.neuShadow
+import com.pixel.pokecollect.settings.Appearance
 import org.jetbrains.compose.resources.Font
 import pokecollect.shared.generated.resources.Res
 import pokecollect.shared.generated.resources.jetbrains_mono_bold
@@ -25,34 +34,100 @@ import pokecollect.shared.generated.resources.space_grotesk_bold
 import pokecollect.shared.generated.resources.space_grotesk_medium
 import pokecollect.shared.generated.resources.space_grotesk_regular
 
+/**
+ * Dark mode keeps the ink black: borders, offset shadows and the saturated fills look the same in
+ * both themes. Only the page, the surfaces and the text on them change (warm charcoal, cream text).
+ * The fixed colours are plain values; the themed ones read the palette [PokeCollectTheme] provides,
+ * so they can only be read in composition.
+ */
 object PokeColors {
-    val Background = Color(0xFFFFFDF2)
-    val Surface = Color(0xFFFFFFFF)
+    /** Borders, offset shadows, and text and icons on saturated fills. Black in both themes. */
     val Ink = Color(0xFF000000)
-    val OnSurfaceVariant = Color(0xFF4A4842)
+
+    /** Secondary text on saturated fills (yellow, orange, type colours). */
+    val InkVariant = Color(0xFF4A4842)
     val Primary = Color(0xFFF4D738)
     val Secondary = Color(0xFF2563EB)
     val Tertiary = Color(0xFF22C55E)
     val Error = Color(0xFFEF4444)
     val Caution = Color(0xFFFF9F5A)
     val Highlight = Color(0xFFFF8FB8)
+
+    val Background: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.background
+    val Surface: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.surface
+
+    /** Text and icons on [Background] and [Surface]. */
+    val OnSurface: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.onSurface
+    val OnSurfaceVariant: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.onSurfaceVariant
 }
 
-private val LightColors = lightColorScheme(
-    background = PokeColors.Background,
-    surface = PokeColors.Surface,
-    onBackground = PokeColors.Ink,
-    onSurface = PokeColors.Ink,
-    onSurfaceVariant = PokeColors.OnSurfaceVariant,
-    outline = PokeColors.Ink,
-    primary = PokeColors.Primary,
-    onPrimary = PokeColors.Ink,
-    secondary = PokeColors.Secondary,
-    onSecondary = Color.White,
-    tertiary = PokeColors.Tertiary,
-    onTertiary = PokeColors.Ink,
-    error = PokeColors.Error,
+@Immutable
+private class PokePalette(
+    val background: Color,
+    val surface: Color,
+    val onSurface: Color,
+    val onSurfaceVariant: Color,
 )
+
+private val LightPalette = PokePalette(
+    background = Color(0xFFFFFDF2),
+    surface = Color(0xFFFFFFFF),
+    onSurface = PokeColors.Ink,
+    onSurfaceVariant = PokeColors.InkVariant,
+)
+
+// Light enough that black borders and shadows still show (about 2:1 on the surface); cream text
+// is ~10:1 on the surface, the muted text ~6:1.
+private val DarkPalette = PokePalette(
+    background = Color(0xFF34322B),
+    surface = Color(0xFF46433A),
+    onSurface = Color(0xFFFFFDF2),
+    onSurfaceVariant = Color(0xFFCAC6BA),
+)
+
+private val LocalPokePalette = staticCompositionLocalOf { LightPalette }
+
+/**
+ * Text and icon colour for content drawn on [fill]: the theme's text colour on the page and on
+ * surfaces, white on blue and black, and ink on every other saturated fill.
+ */
+@Composable
+@ReadOnlyComposable
+fun contentColorOn(fill: Color): Color = when (fill) {
+    PokeColors.Background, PokeColors.Surface -> PokeColors.OnSurface
+    PokeColors.Secondary, PokeColors.Ink -> Color.White
+    else -> PokeColors.Ink
+}
+
+/** Secondary text on [fill]; see [contentColorOn]. */
+@Composable
+@ReadOnlyComposable
+fun mutedColorOn(fill: Color): Color = when (fill) {
+    PokeColors.Background, PokeColors.Surface -> PokeColors.OnSurfaceVariant
+    else -> PokeColors.InkVariant
+}
+
+private fun materialColors(palette: PokePalette, dark: Boolean): ColorScheme {
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        background = palette.background,
+        surface = palette.surface,
+        onBackground = palette.onSurface,
+        onSurface = palette.onSurface,
+        onSurfaceVariant = palette.onSurfaceVariant,
+        outline = PokeColors.Ink,
+        primary = PokeColors.Primary,
+        onPrimary = PokeColors.Ink,
+        secondary = PokeColors.Secondary,
+        onSecondary = Color.White,
+        tertiary = PokeColors.Tertiary,
+        onTertiary = PokeColors.Ink,
+        error = PokeColors.Error,
+    )
+}
+
+private val LightColors = materialColors(LightPalette, dark = false)
+private val DarkColors = materialColors(DarkPalette, dark = true)
 
 /** Saturated fills tuned so black text clears 4.5:1 on every type. */
 private val TypeFills = mapOf(
@@ -133,7 +208,22 @@ private fun pokeTypography(): Typography {
     )
 }
 
+/** Whether [appearance] means dark right now: the person's choice, or the phone's setting for System. */
 @Composable
-fun PokeCollectTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = LightColors, typography = pokeTypography(), content = content)
+fun Appearance.isDark(): Boolean = when (this) {
+    Appearance.System -> isSystemInDarkTheme()
+    Appearance.Light -> false
+    Appearance.Dark -> true
+}
+
+@Composable
+fun PokeCollectTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val palette = if (dark) DarkPalette else LightPalette
+    CompositionLocalProvider(LocalPokePalette provides palette) {
+        MaterialTheme(colorScheme = if (dark) DarkColors else LightColors, typography = pokeTypography()) {
+            // Text and icons without a colour of their own: the theme's text colour. Content on a
+            // saturated fill sets its own (contentColorOn).
+            CompositionLocalProvider(LocalContentColor provides palette.onSurface, content = content)
+        }
+    }
 }

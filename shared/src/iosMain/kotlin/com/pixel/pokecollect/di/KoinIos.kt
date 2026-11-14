@@ -7,6 +7,8 @@ import com.pixel.pokecollect.model.ModelDelivery
 import com.pixel.pokecollect.model.NativeLanguageModel
 import com.pixel.pokecollect.model.NothingToDeliver
 import com.pixel.pokecollect.model.SwiftLocalModel
+import com.pixel.pokecollect.settings.SettingsStore
+import com.pixel.pokecollect.settings.UserDefaultsSettingsStore
 import com.pixel.pokecollect.voice.NativeSpeechRecognizer
 import com.pixel.pokecollect.voice.SpeechToText
 import com.pixel.pokecollect.voice.SwiftSpeechToText
@@ -16,6 +18,7 @@ import org.koin.dsl.module
 actual val platformModule: Module = module {
     single { buildDatabase(databaseBuilder()) }
     single<ModelDelivery> { NothingToDeliver }
+    single<SettingsStore> { UserDefaultsSettingsStore() }
 }
 
 /**

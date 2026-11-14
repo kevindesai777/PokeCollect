@@ -39,9 +39,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,6 +55,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -64,7 +67,9 @@ import com.pixel.pokecollect.data.PokemonWithCollection
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
+import com.pixel.pokecollect.ui.theme.contentColorOn
 import com.pixel.pokecollect.ui.theme.monoFontFamily
+import com.pixel.pokecollect.ui.theme.mutedColorOn
 import com.pixel.pokecollect.ui.theme.typeFill
 
 private val ScreenMargin = 20.dp
@@ -183,7 +188,8 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onAsk: () 
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                textStyle = MaterialTheme.typography.bodyLarge,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = PokeColors.OnSurface),
+                cursorBrush = SolidColor(PokeColors.OnSurface),
                 singleLine = true,
                 // Autocorrect would "fix" card names.
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Search),
@@ -199,6 +205,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onAsk: () 
         Text(
             "Ask",
             style = MaterialTheme.typography.labelLarge.copy(fontSize = 17.sp),
+            color = PokeColors.Ink,
             modifier = Modifier
                 .brutal(PokeColors.Primary, PokeShapes.Small, offset = 0.dp)
                 .clickable(onClick = onAsk)
@@ -253,6 +260,7 @@ private fun ProgressCard(caught: Int, total: Int) {
             Text(
                 "${(fraction * 100).toInt()}%",
                 style = MaterialTheme.typography.labelMedium,
+                color = PokeColors.Ink,
                 modifier = Modifier
                     .brutal(PokeColors.Primary, PokeShapes.Tag, offset = 0.dp)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -329,23 +337,24 @@ private fun GenerationStrip(
             // Generation 0 stands for "All".
             val gen = chip.generation.takeIf { it != 0 }
             val isSelected = gen == selected
+            val fill = if (isSelected) PokeColors.Primary else PokeColors.Surface
             Column(
                 modifier = Modifier
                     // Selected chip "presses in": shadow removed, nudged by the shadow distance.
                     .then(if (isSelected) Modifier.offset(3.dp, 3.dp) else Modifier)
-                    .brutal(
-                        if (isSelected) PokeColors.Primary else PokeColors.Surface,
-                        PokeShapes.Small,
-                        offset = if (isSelected) 0.dp else 3.dp,
-                    )
+                    .brutal(fill, PokeShapes.Small, offset = if (isSelected) 0.dp else 3.dp)
                     .clickable { onSelect(gen) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Text(if (gen == null) "All" else "Gen $gen", style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp))
+                Text(
+                    if (gen == null) "All" else "Gen $gen",
+                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                    color = contentColorOn(fill),
+                )
                 Text(
                     "${chip.caught}/${chip.total}",
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFontFamily()),
-                    color = PokeColors.OnSurfaceVariant,
+                    color = mutedColorOn(fill),
                 )
             }
         }
@@ -361,7 +370,7 @@ private fun MicFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.Mic, contentDescription = "Say your cards", modifier = Modifier.size(38.dp))
+        Icon(Icons.Default.Mic, contentDescription = "Say your cards", modifier = Modifier.size(38.dp), tint = PokeColors.Ink)
     }
 }
 
@@ -378,7 +387,7 @@ private fun EmptyState(onVoice: () -> Unit, onBrowse: () -> Unit) {
                 .brutal(PokeColors.Highlight, PokeShapes.Large, border = 3.dp, offset = 5.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Style, contentDescription = null, modifier = Modifier.size(44.dp))
+            Icon(Icons.Outlined.Style, contentDescription = null, modifier = Modifier.size(44.dp), tint = PokeColors.Ink)
         }
         Spacer(Modifier.height(22.dp))
         Text("Start your collection", style = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp))
@@ -407,8 +416,10 @@ private fun BrutalButton(text: String, fill: Color, onClick: () -> Unit, icon: (
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        icon?.invoke()
-        Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp))
+        CompositionLocalProvider(LocalContentColor provides contentColorOn(fill)) {
+            icon?.invoke()
+            Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp))
+        }
     }
 }
 

@@ -6,6 +6,8 @@ import com.pixel.pokecollect.model.AiPackModelDelivery
 import com.pixel.pokecollect.model.LiteRtLmModel
 import com.pixel.pokecollect.model.LocalModel
 import com.pixel.pokecollect.model.ModelDelivery
+import com.pixel.pokecollect.settings.SettingsStore
+import com.pixel.pokecollect.settings.SharedPreferencesSettingsStore
 import com.pixel.pokecollect.voice.AndroidSpeechToText
 import com.pixel.pokecollect.voice.SpeechToText
 import org.koin.android.ext.koin.androidContext
@@ -18,4 +20,5 @@ actual val platformModule: Module = module {
     single<ModelDelivery> { get<AiPackModelDelivery>() }
     single<LocalModel> { LiteRtLmModel(androidContext(), modelFile = get<AiPackModelDelivery>()::modelFile) }
     single<SpeechToText> { AndroidSpeechToText(androidContext()) }
+    single<SettingsStore> { SharedPreferencesSettingsStore(androidContext()) }
 }

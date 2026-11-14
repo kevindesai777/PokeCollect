@@ -3,17 +3,24 @@ package com.pixel.pokecollect.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -30,13 +37,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pixel.pokecollect.settings.Appearance
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
+import com.pixel.pokecollect.ui.theme.contentColorOn
 import com.pixel.pokecollect.ui.theme.monoFontFamily
 import kotlinx.coroutines.CancellationException
 import pokecollect.shared.generated.resources.Res
@@ -80,10 +91,10 @@ private val Credits = listOf(
     Credit("neubrutalism-compose-multiplatform", "MIT License.", "https://github.com/tamtom/neubrutalism-compose-multiplatform"),
 )
 
-/** The fan-app disclaimer, what happens to your data, and the licences. */
+/** Light or dark, the fan-app disclaimer, what happens to your data, and the licences. */
 @OptIn(ExperimentalComposeUiApi::class) // BackHandler
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(appearance: Appearance, onAppearanceChange: (Appearance) -> Unit, onBack: () -> Unit) {
     // A licence text opens over the list; Back returns to the list.
     var openFile by rememberSaveable { mutableStateOf<String?>(null) }
     // Outlives the licence view, so Back returns to the same place in the list.
@@ -101,6 +112,12 @@ fun AboutScreen(onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { TopBar("About", onBack) }
+        item {
+            Section("Appearance") {
+                AppearancePicker(appearance, onAppearanceChange)
+                Text("System follows your phone's setting.", style = MaterialTheme.typography.bodySmall, color = PokeColors.OnSurfaceVariant)
+            }
+        }
         item {
             Section("Unofficial fan app") {
                 Body(
@@ -157,6 +174,36 @@ private fun LicenseTextScreen(license: LicenseText, onBack: () -> Unit) {
                 text?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFontFamily(), fontSize = 12.sp, lineHeight = 17.sp))
                 }
+            }
+        }
+    }
+}
+
+/** System / Light / Dark as one segmented control; the chosen one is yellow. */
+@Composable
+private fun AppearancePicker(selected: Appearance, onSelect: (Appearance) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .brutal(PokeColors.Surface, PokeShapes.Small)
+            .padding(2.dp) // inside the border
+            .clip(RoundedCornerShape(7.dp))
+            .selectableGroup(),
+    ) {
+        Appearance.entries.forEachIndexed { i, option ->
+            if (i > 0) Box(Modifier.width(2.dp).fillMaxHeight().background(PokeColors.Ink))
+            val isSelected = option == selected
+            val fill = if (isSelected) PokeColors.Primary else PokeColors.Surface
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(fill)
+                    .selectable(selected = isSelected, role = Role.RadioButton) { onSelect(option) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(option.name, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), color = contentColorOn(fill))
             }
         }
     }

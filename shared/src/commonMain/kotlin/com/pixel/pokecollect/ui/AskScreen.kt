@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +57,7 @@ import com.pixel.pokecollect.query.QueryIntent
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
+import com.pixel.pokecollect.ui.theme.contentColorOn
 import com.pixel.pokecollect.ui.theme.monoFontFamily
 import com.pixel.pokecollect.voice.rememberMicrophonePermission
 
@@ -196,8 +198,8 @@ internal fun TopBar(title: String, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Default.Memory, contentDescription = null, modifier = Modifier.size(16.dp))
-            Text("On-device · no network", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp))
+            Icon(Icons.Default.Memory, contentDescription = null, modifier = Modifier.size(16.dp), tint = PokeColors.Ink)
+            Text("On-device · no network", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), color = PokeColors.Ink)
         }
     }
 }
@@ -227,7 +229,8 @@ private fun QuestionField(
                 value = value,
                 onValueChange = onValueChange,
                 enabled = enabled,
-                textStyle = MaterialTheme.typography.bodyLarge,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = PokeColors.OnSurface),
+                cursorBrush = SolidColor(PokeColors.OnSurface),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSubmit() }),
                 modifier = Modifier.fillMaxWidth(),
@@ -235,24 +238,30 @@ private fun QuestionField(
         }
         Spacer(Modifier.size(10.dp))
         // The mic turns into a stop button while listening: tap again when done.
+        val micFill = if (listening) PokeColors.Error else PokeColors.Surface
         Box(
             Modifier
                 .size(46.dp)
-                .brutal(if (listening) PokeColors.Error else PokeColors.Surface, PokeShapes.Small)
+                .brutal(micFill, PokeShapes.Small)
                 .clickable(enabled = enabled || listening, onClick = onMic),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(if (listening) Icons.Default.Stop else Icons.Default.Mic, contentDescription = if (listening) "Done" else "Speak")
+            Icon(
+                if (listening) Icons.Default.Stop else Icons.Default.Mic,
+                contentDescription = if (listening) "Done" else "Speak",
+                tint = contentColorOn(micFill),
+            )
         }
         Spacer(Modifier.size(10.dp))
+        val sendFill = if (enabled) PokeColors.Primary else PokeColors.Background
         Box(
             Modifier
                 .size(46.dp)
-                .brutal(if (enabled) PokeColors.Primary else PokeColors.Background, PokeShapes.Small)
+                .brutal(sendFill, PokeShapes.Small)
                 .clickable(enabled = enabled && value.isNotBlank(), onClick = onSubmit),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.ArrowUpward, contentDescription = "Ask")
+            Icon(Icons.Default.ArrowUpward, contentDescription = "Ask", tint = contentColorOn(sendFill))
         }
     }
 }

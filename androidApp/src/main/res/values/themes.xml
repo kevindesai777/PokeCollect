@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window (and Android 12+ splash screen) behind the first Compose frame: the app's page
+         colour, so launching doesn't flash another one. values-night has the dark one. -->
+    <color name="window_background">#FFFDF2</color>
+
+    <style name="Theme.PokeCollect" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

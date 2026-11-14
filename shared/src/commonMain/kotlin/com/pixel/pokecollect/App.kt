@@ -14,7 +14,10 @@ import com.pixel.pokecollect.ui.AskScreen
 import com.pixel.pokecollect.ui.AskViewModel
 import com.pixel.pokecollect.ui.CollectionScreen
 import com.pixel.pokecollect.ui.CollectionViewModel
+import com.pixel.pokecollect.ui.SettingsViewModel
 import com.pixel.pokecollect.ui.theme.PokeCollectTheme
+import com.pixel.pokecollect.ui.theme.SystemAppearance
+import com.pixel.pokecollect.ui.theme.isDark
 import org.koin.compose.viewmodel.koinViewModel
 
 private enum class Screen { Collection, Ask, About }
@@ -29,7 +32,12 @@ fun App() {
     // The mic button opens Ask already listening; the search bar's Ask button opens it ready to type.
     var listenOnOpen by rememberSaveable { mutableStateOf(false) }
 
-    PokeCollectTheme {
+    val settings = koinViewModel<SettingsViewModel>()
+    val appearance by settings.appearance.collectAsStateWithLifecycle()
+    val dark = appearance.isDark()
+    SystemAppearance(appearance, dark)
+
+    PokeCollectTheme(dark = dark) {
         when (screen) {
             Screen.Collection -> {
                 val viewModel = koinViewModel<CollectionViewModel>()
@@ -55,7 +63,11 @@ fun App() {
             }
             Screen.About -> {
                 BackHandler { screen = Screen.Collection }
-                AboutScreen(onBack = { screen = Screen.Collection })
+                AboutScreen(
+                    appearance = appearance,
+                    onAppearanceChange = settings::setAppearance,
+                    onBack = { screen = Screen.Collection },
+                )
             }
             Screen.Ask -> {
                 val viewModel = koinViewModel<AskViewModel>()

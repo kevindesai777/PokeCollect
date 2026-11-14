@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +27,9 @@ import androidx.compose.ui.unit.sp
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
+import com.pixel.pokecollect.ui.theme.contentColorOn
 import com.pixel.pokecollect.ui.theme.monoFontFamily
+import com.pixel.pokecollect.ui.theme.mutedColorOn
 import com.pixel.pokecollect.ui.theme.typeFill
 import com.pixel.pokecollect.voice.PickedBy
 
@@ -45,10 +49,12 @@ internal fun HeardCardsSummary(cards: HeardCards) {
 @Composable
 internal fun HeardRow(item: HeardItem, onToggle: () -> Unit, onChoose: (cardId: Int) -> Unit) {
     val entry = item.entry
+    val fill = if (item.needsCheck || entry == null) PokeColors.Caution else PokeColors.Surface
+    val onFill = contentColorOn(fill)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .brutal(if (item.needsCheck || entry == null) PokeColors.Caution else PokeColors.Surface, PokeShapes.Medium)
+            .brutal(fill, PokeShapes.Medium)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -63,9 +69,9 @@ internal fun HeardRow(item: HeardItem, onToggle: () -> Unit, onChoose: (cardId: 
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(entry?.pokemon?.name ?: "Not sure", style = MaterialTheme.typography.titleSmall)
+                    Text(entry?.pokemon?.name ?: "Not sure", style = MaterialTheme.typography.titleSmall, color = onFill)
                     if (entry != null) {
-                        Text(dexLabel(entry.pokemon.id), fontFamily = monoFontFamily(), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PokeColors.OnSurfaceVariant)
+                        Text(dexLabel(entry.pokemon.id), fontFamily = monoFontFamily(), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = mutedColorOn(fill))
                     }
                 }
                 FlowRow(
@@ -73,7 +79,7 @@ internal fun HeardRow(item: HeardItem, onToggle: () -> Unit, onChoose: (cardId: 
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("heard \"${item.heard}\"", fontFamily = monoFontFamily(), fontSize = 13.sp, color = PokeColors.Ink)
+                    Text("heard \"${item.heard}\"", fontFamily = monoFontFamily(), fontSize = 13.sp, color = onFill)
                     if (item.pickedBy == PickedBy.MODEL) Tag("MODEL", PokeColors.Secondary, Color.White)
                     if (entry?.caught == true) Tag("HAVE IT", PokeColors.Tertiary, PokeColors.Ink)
                 }
@@ -83,11 +89,12 @@ internal fun HeardRow(item: HeardItem, onToggle: () -> Unit, onChoose: (cardId: 
         val others = item.alternatives.filter { it.pokemon.id != entry?.pokemon?.id }
         if ((item.needsCheck || entry == null) && others.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Or:", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 6.dp))
+                Text("Or:", style = MaterialTheme.typography.labelLarge, color = onFill, modifier = Modifier.padding(top = 6.dp))
                 others.forEach { other ->
                     Text(
                         other.pokemon.name,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = PokeColors.OnSurface,
                         modifier = Modifier
                             .brutal(PokeColors.Surface, PokeShapes.Small)
                             .clickable { onChoose(other.pokemon.id) }
@@ -102,17 +109,20 @@ internal fun HeardRow(item: HeardItem, onToggle: () -> Unit, onChoose: (cardId: 
 /** Nothing is written until the person taps this. */
 @Composable
 internal fun MarkCaughtButton(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val fill = if (count == 0) PokeColors.Background else PokeColors.Primary
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(60.dp)
-            .brutal(if (count == 0) PokeColors.Background else PokeColors.Primary, PokeShapes.Medium, border = 3.dp, offset = 4.dp)
+            .brutal(fill, PokeShapes.Medium, border = 3.dp, offset = 4.dp)
             .clickable(enabled = count > 0, onClick = onClick),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(24.dp))
-        Text(if (count == 0) "Nothing to add" else "Mark $count caught", style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp))
+        CompositionLocalProvider(LocalContentColor provides contentColorOn(fill)) {
+            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(24.dp))
+            Text(if (count == 0) "Nothing to add" else "Mark $count caught", style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp))
+        }
     }
 }
 

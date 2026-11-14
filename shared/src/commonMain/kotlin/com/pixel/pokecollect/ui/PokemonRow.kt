@@ -157,6 +157,7 @@ internal fun TypeChip(type: String) {
     Text(
         type.uppercase(),
         style = MaterialTheme.typography.labelSmall,
+        color = PokeColors.Ink,
         modifier = Modifier
             .brutal(typeFill(type), PokeShapes.Tag, offset = 0.dp)
             .padding(horizontal = 7.dp, vertical = 2.dp),
@@ -172,6 +173,6 @@ internal fun CaughtBox(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
             .clickable { onCheckedChange(!checked) },
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) Icon(Icons.Default.Check, contentDescription = "Caught", modifier = Modifier.size(22.dp))
+        if (checked) Icon(Icons.Default.Check, contentDescription = "Caught", modifier = Modifier.size(22.dp), tint = PokeColors.Ink)
     }
 }
