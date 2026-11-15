@@ -47,6 +47,8 @@ fun App() {
                     query = viewModel.query,
                     onQueryChange = viewModel::search,
                     onSelectGeneration = viewModel::selectGeneration,
+                    onShow = viewModel::show,
+                    onOrderChange = viewModel::setOrder,
                     onCaughtChange = viewModel::setCaught,
                     onAsk = { text ->
                         askDraft = text.trim()

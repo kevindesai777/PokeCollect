@@ -29,7 +29,7 @@ private const val Accented = "àáâäèéêëìíîïòóôöùúûü"
 private const val Plain = "aaaaeeeeiiiioooouuuu"
 
 /** Lowercase letters and digits only, accents folded: "Flabébé" → "flabebe", "Mr. Mime" → "mrmime". */
-private fun searchKey(text: String): String = buildString {
+internal fun searchKey(text: String): String = buildString {
     for (c in text.lowercase()) {
         val folded = Accented.indexOf(c).let { if (it >= 0) Plain[it] else c }
         if (folded.isLetterOrDigit()) append(folded)

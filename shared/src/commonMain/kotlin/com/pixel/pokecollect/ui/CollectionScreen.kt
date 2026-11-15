@@ -16,13 +16,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,10 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Info
@@ -63,13 +58,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pixel.pokecollect.data.CardOrder
+import com.pixel.pokecollect.data.CardView
+import com.pixel.pokecollect.data.CaughtFilter
 import com.pixel.pokecollect.data.PokemonWithCollection
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
 import com.pixel.pokecollect.ui.theme.contentColorOn
-import com.pixel.pokecollect.ui.theme.monoFontFamily
-import com.pixel.pokecollect.ui.theme.mutedColorOn
 import com.pixel.pokecollect.ui.theme.typeFill
 
 private val ScreenMargin = 20.dp
@@ -80,13 +76,14 @@ fun CollectionScreen(
     query: String,
     onQueryChange: (String) -> Unit,
     onSelectGeneration: (Int?) -> Unit,
+    onShow: (CaughtFilter) -> Unit,
+    onOrderChange: (CardOrder) -> Unit,
     onCaughtChange: (pokemonId: Int, caught: Boolean) -> Unit,
     onAsk: (question: String) -> Unit,
     onVoice: () -> Unit,
     onAbout: () -> Unit,
 ) {
     // View-only state. Anything that shapes the data lives in CollectionViewModel.
-    var gensExpanded by rememberSaveable { mutableStateOf(false) }
     var browsing by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(PokeColors.Background).safeDrawingPadding()) {
@@ -113,23 +110,18 @@ fun CollectionScreen(
                     if (state.visible.isEmpty()) item { NoMatch(query, onAsk = { onAsk(query) }) }
                 } else {
                     item {
-                        GenerationHeader(
-                            selected = state.selectedGeneration,
-                            expanded = gensExpanded,
-                            onToggle = { gensExpanded = !gensExpanded },
+                        ViewChips(
+                            view = state.view,
+                            generations = state.generations,
+                            caught = state.caught,
+                            total = state.total,
+                            inView = state.inView,
+                            onSelectGeneration = onSelectGeneration,
+                            onShow = onShow,
+                            onOrderChange = onOrderChange,
                         )
                     }
-                    if (gensExpanded) {
-                        item {
-                            GenerationStrip(
-                                generations = state.generations,
-                                caught = state.caught,
-                                total = state.total,
-                                selected = state.selectedGeneration,
-                                onSelect = onSelectGeneration,
-                            )
-                        }
-                    }
+                    if (state.visible.isEmpty()) item { NothingInView(state.view, onShowAll = { onShow(CaughtFilter.All) }) }
                 }
                 items(state.visible, key = { it.pokemon.id }) { entry ->
                     PokemonRow(entry, onCaughtChange = { onCaughtChange(entry.pokemon.id, it) })
@@ -231,6 +223,28 @@ private fun NoMatch(query: String, onAsk: () -> Unit) {
     }
 }
 
+/** The chosen generation and Have / Missing leave nothing: say why, rather than show a blank list. */
+@Composable
+private fun NothingInView(view: CardView, onShowAll: () -> Unit) {
+    val cards = if (view.generation == null) "card" else "Gen ${view.generation} card"
+    val (title, body) = when (view.show) {
+        CaughtFilter.Missing -> "You have every $cards" to "Nothing missing here."
+        CaughtFilter.Have -> "No ${cards}s caught yet" to "Say your cards, or tick the ones you have."
+        CaughtFilter.All -> "No cards here" to "Try another generation."
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall.copy(fontSize = 17.sp))
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = PokeColors.OnSurfaceVariant)
+        if (view.show != CaughtFilter.All) {
+            Spacer(Modifier.height(4.dp))
+            BrutalButton("Show all cards", PokeColors.Primary, onShowAll)
+        }
+    }
+}
+
 @Composable
 private fun ProgressCard(caught: Int, total: Int) {
     val fraction = if (total == 0) 0f else caught.toFloat() / total
@@ -291,72 +305,6 @@ private fun BrutalProgressBar(fraction: Float) {
                         drawLine(PokeColors.Ink, Offset(size.width, 0f), Offset(size.width, size.height), 2.5.dp.toPx())
                     },
             )
-        }
-    }
-}
-
-@Composable
-private fun GenerationHeader(selected: Int?, expanded: Boolean, onToggle: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 14.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("By generation", style = MaterialTheme.typography.titleSmall.copy(fontSize = 17.sp))
-        Text(
-            if (selected == null) "All" else "Gen $selected",
-            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.sp),
-            color = PokeColors.OnSurfaceVariant,
-            modifier = Modifier.padding(start = 8.dp).weight(1f),
-        )
-        Box(
-            Modifier
-                .size(34.dp)
-                .brutal(PokeColors.Surface, PokeShapes.Small, offset = 0.dp)
-                .clickable(onClick = onToggle),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (expanded) "Hide generations" else "Show generations",
-            )
-        }
-    }
-}
-
-@Composable
-private fun GenerationStrip(
-    generations: List<GenerationSummary>,
-    caught: Int,
-    total: Int,
-    selected: Int?,
-    onSelect: (Int?) -> Unit,
-) {
-    val chips = listOf(GenerationSummary(generation = 0, caught = caught, total = total)) + generations
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 6.dp, bottom = 6.dp)) {
-        items(chips, key = { it.generation }) { chip ->
-            // Generation 0 stands for "All".
-            val gen = chip.generation.takeIf { it != 0 }
-            val isSelected = gen == selected
-            val fill = if (isSelected) PokeColors.Primary else PokeColors.Surface
-            Column(
-                modifier = Modifier
-                    // Selected chip "presses in": shadow removed, nudged by the shadow distance.
-                    .then(if (isSelected) Modifier.offset(3.dp, 3.dp) else Modifier)
-                    .brutal(fill, PokeShapes.Small, offset = if (isSelected) 0.dp else 3.dp)
-                    .clickable { onSelect(gen) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    if (gen == null) "All" else "Gen $gen",
-                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
-                    color = contentColorOn(fill),
-                )
-                Text(
-                    "${chip.caught}/${chip.total}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFontFamily()),
-                    color = mutedColorOn(fill),
-                )
-            }
         }
     }
 }
