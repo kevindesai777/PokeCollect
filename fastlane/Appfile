@@ -1,0 +1,5 @@
+# Same ID on both stores. Keys and the Team ID come from fastlane/.env (see .env.example).
+package_name("com.pixel.pokecollect")
+app_identifier("com.pixel.pokecollect")
+json_key_file(ENV["PLAY_JSON_KEY"]) if ENV["PLAY_JSON_KEY"]
+team_id(ENV["TEAM_ID"]) if ENV["TEAM_ID"]

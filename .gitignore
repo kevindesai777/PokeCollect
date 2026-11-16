@@ -31,3 +31,14 @@ keystore.properties
 
 # Private research notes and product ideas: kept local, never pushed
 docs/research/
+
+# fastlane: keys and paths (see fastlane/.env.example), run reports
+fastlane/.env
+fastlane/.env.*
+!fastlane/.env.example
+fastlane/report.xml
+
+# Store API keys live in ~/keys. These catch a copy dropped into the repo by mistake.
+*.p8
+AuthKey_*
+*service-account*.json

@@ -1,0 +1,252 @@
+# Releases PokeCollect to both stores from this Mac. Play gets a draft production release and App
+# Store Connect a TestFlight build; sending either for review stays a click in its console.
+#
+#   scripts/release.sh version:1.1                 both stores
+#   scripts/release.sh version:1.1 only:ios        one store (or only:android), e.g. to retry it
+#   scripts/release.sh version:1.1 upload:false    build and check everything; upload and commit nothing
+#
+# Before a release, write the notes in fastlane/metadata/android/en-US/changelogs/default.txt
+# (Play's limit is 500 characters). Keys and paths come from fastlane/.env (see .env.example).
+#
+# Order: checks, one build number for both stores, tests, both builds, then both uploads, then the
+# version bump and notes are committed, tagged v<version>-<build> and pushed. A failure before any
+# upload puts the version files back.
+
+opt_out_usage # no usage reports to fastlane
+skip_docs # no generated fastlane/README.md
+
+ROOT =`git rev-parse --show-toplevel`.strip
+GRADLE_FILE = File.join(ROOT, "androidApp/build.gradle.kts")
+XCCONFIG = File.join(ROOT, "iosApp/Configuration/Config.xcconfig")
+NOTES_PATH = "fastlane/metadata/android/en-US/changelogs/default.txt"
+NOTES = File.join(ROOT, NOTES_PATH)
+MODEL = File.join(ROOT, "gemma_pack/src/main/assets/gemma3-1b-it-int4.litertlm")
+SPRITES = File.join(ROOT, "shared/src/commonMain/composeResources/files/sprites")
+AAB = File.join(ROOT, "androidApp/build/outputs/bundle/release/androidApp-release.aab")
+MAPPING = File.join(ROOT, "androidApp/build/outputs/mapping/release/mapping.txt")
+OUT = File.join(ROOT, "build/release")
+IPA = File.join(OUT, "PokeCollect.ipa")
+PLAY_NOTES_LIMIT = 500
+
+lane :release do |options|
+  version = options[:version].to_s
+  UI.user_error!("Pass the version name, e.g. version:1.1") unless version.match?(/\A\d+\.\d+(\.\d+)?\z/)
+  upload = options[:upload].to_s != "false"
+  stores = { "" => %i[android ios], "android" => %i[android], "ios" => %i[ios] }[options[:only].to_s]
+  UI.user_error!("only: takes android or ios") unless stores
+
+  preflight(stores) if upload
+  originals = [GRADLE_FILE, XCCONFIG].to_h { |file| [file, File.read(file)] }
+  build = (local_build_numbers + store_build_numbers(stores)).max + 1
+  set_versions(version, build, stores)
+  UI.header("PokeCollect #{version} (#{build}): #{stores.join(' and ')}#{upload ? '' : ', dry run'}")
+
+  uploaded = []
+  problems = []
+  begin
+    unless options[:tests].to_s == "false"
+      run_gradle(":shared:testAndroidHostTest", ":shared:iosSimulatorArm64Test")
+    end
+    problems += build_android(strict: upload) if stores.include?(:android)
+    build_ios if stores.include?(:ios)
+    if upload
+      if stores.include?(:android)
+        upload_android
+        uploaded << :android
+      end
+      if stores.include?(:ios)
+        upload_to_testflight(api_key: asc_key, ipa: IPA, skip_waiting_for_build_processing: true)
+        uploaded << :ios
+      end
+    end
+  rescue StandardError, Interrupt
+    if uploaded.empty?
+      originals.each { |file, text| File.write(file, text) }
+    else
+      UI.error("Uploaded to #{uploaded.join(' and ')} before failing: the version files keep #{version} (#{build}).")
+    end
+    raise
+  end
+
+  unless upload
+    originals.each { |file, text| File.write(file, text) }
+    UI.important("Dry run: #{problems.length} problem(s), listed above") unless problems.empty?
+    UI.success("Dry run done: nothing uploaded or committed, version files put back.")
+    next
+  end
+
+  git_commit(path: [GRADLE_FILE, XCCONFIG, NOTES], message: "Release #{version} (#{build})")
+  add_git_tag(tag: "v#{version}-#{build}")
+  push_to_git_remote(remote: "origin", local_branch: "main", remote_branch: "main", tags: true)
+
+  UI.success("PokeCollect #{version} (#{build}) uploaded, committed and tagged v#{version}-#{build}.")
+  if stores.include?(:android)
+    UI.message("Play Console > Production: check the draft release, then send it for review.")
+  end
+  if stores.include?(:ios)
+    UI.message("App Store Connect: once the build has processed (TestFlight), add it to version #{version}, " \
+               "paste these notes into What's New and submit:")
+    UI.message(File.read(NOTES).strip)
+  end
+end
+
+# --- Checks ---------------------------------------------------------------------------------------
+
+def preflight(stores)
+  branch = git(%w[rev-parse --abbrev-ref HEAD]).strip
+  UI.user_error!("Release from main, not #{branch}") unless branch == "main"
+
+  # The notes may be uncommitted: the release commit takes them along with the version bump.
+  dirty = git(%w[status --porcelain]).lines.map { |line| line[3..].strip }.reject { |path| path == NOTES_PATH }
+  UI.user_error!("Commit or stash first: #{dirty.join(', ')}") unless dirty.empty?
+
+  git(%w[fetch --quiet origin main])
+  ahead, behind = git(%w[rev-list --left-right --count HEAD...origin/main]).split.map(&:to_i)
+  UI.user_error!("main is #{ahead} ahead and #{behind} behind origin/main: push or pull first") unless ahead.zero? && behind.zero?
+
+  missing = []
+  missing << "PLAY_JSON_KEY" if stores.include?(:android) && blank?(ENV["PLAY_JSON_KEY"])
+  if stores.include?(:ios)
+    %w[TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH].each { |name| missing << name if blank?(ENV[name]) }
+  end
+  UI.user_error!("Set #{missing.join(', ')} in fastlane/.env (see .env.example)") unless missing.empty?
+
+  return unless stores.include?(:android)
+
+  UI.user_error!("No keystore.properties: the bundle would be unsigned (see androidApp/build.gradle.kts)") \
+    unless File.exist?(File.join(ROOT, "keystore.properties"))
+  notes = File.exist?(NOTES) ? File.read(NOTES).strip : ""
+  UI.user_error!("Write the release notes in #{NOTES_PATH}") if notes.empty?
+  UI.user_error!("Release notes are #{notes.length} characters; Play takes #{PLAY_NOTES_LIMIT}") if notes.length > PLAY_NOTES_LIMIT
+  last_tag = git(%w[describe --tags --abbrev=0 --match v*], allow_failure: true).strip
+  if !last_tag.empty? && git(["show", "#{last_tag}:#{NOTES_PATH}"], allow_failure: true).strip == notes
+    UI.user_error!("The release notes are still #{last_tag}'s: write this release's")
+  end
+end
+
+# --- Version --------------------------------------------------------------------------------------
+
+def local_build_numbers
+  [File.read(GRADLE_FILE)[/versionCode = (\d+)/, 1], File.read(XCCONFIG)[/^CURRENT_PROJECT_VERSION=(\d+)/, 1]].map(&:to_i)
+end
+
+# What the stores already have, when their keys are set: a build number can't be reused.
+def store_build_numbers(stores)
+  numbers = []
+  if stores.include?(:android) && !blank?(ENV["PLAY_JSON_KEY"])
+    %w[production beta alpha internal].each { |track| numbers += google_play_track_version_codes(track: track) }
+  end
+  if stores.include?(:ios) && asc_key
+    numbers << latest_testflight_build_number(api_key: asc_key, initial_build_number: 0)
+  end
+  numbers.map(&:to_i)
+end
+
+def set_versions(version, build, stores)
+  if stores.include?(:android)
+    edit(GRADLE_FILE, /versionCode = \d+/, "versionCode = #{build}")
+    edit(GRADLE_FILE, /versionName = "[^"]*"/, %(versionName = "#{version}"))
+  end
+  if stores.include?(:ios)
+    edit(XCCONFIG, /^CURRENT_PROJECT_VERSION=.*$/, "CURRENT_PROJECT_VERSION=#{build}")
+    edit(XCCONFIG, /^MARKETING_VERSION=.*$/, "MARKETING_VERSION=#{version}")
+  end
+end
+
+def edit(file, pattern, replacement)
+  text = File.read(file)
+  UI.user_error!("#{pattern.inspect} not found in #{file}") unless text.match?(pattern)
+  File.write(file, text.sub(pattern, replacement))
+end
+
+# --- Android --------------------------------------------------------------------------------------
+
+# Returns the bundle check's problems. strict (a real release) stops on them instead.
+def build_android(strict:)
+  unless File.exist?(MODEL)
+    UI.user_error!("No model in gemma_pack: set GEMMA_MODEL in fastlane/.env") if blank?(ENV["GEMMA_MODEL"])
+    sh(File.join(ROOT, "scripts/stage_model.sh"), File.expand_path(ENV["GEMMA_MODEL"]))
+  end
+  UI.user_error!("No sprites: run scripts/fetch_sprites.py") if Dir.glob(File.join(SPRITES, "*.png")).empty?
+
+  # :shared:clean, or sprites added or removed since the last build keep shipping (see CLAUDE.md).
+  run_gradle(":shared:clean", ":androidApp:bundleRelease")
+
+  problems = []
+  sh(File.join(ROOT, "scripts/check_bundle.sh"), AAB, error_callback: lambda { |output|
+    problems = output.lines.grep(/FAIL/).map(&:strip)
+  })
+  UI.user_error!("The bundle check failed: #{problems.join('; ')}") if strict && !problems.empty?
+  problems.each { |problem| UI.important(problem) }
+  problems
+end
+
+def upload_android
+  upload_to_play_store(
+    track: "production",
+    release_status: "draft",
+    aab: AAB,
+    mapping: (MAPPING if File.exist?(MAPPING)),
+    metadata_path: File.join(ROOT, "fastlane/metadata/android"),
+    # Only the bundle and its release notes: the store listing is edited in Play Console.
+    skip_upload_apk: true,
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+    # The bundle carries the 584 MB model pack; the default is 300 s.
+    timeout: 1800,
+  )
+end
+
+# --- iOS ------------------------------------------------------------------------------------------
+
+def build_ios
+  team = ENV["TEAM_ID"].to_s
+  UI.user_error!("Set TEAM_ID in fastlane/.env") if team.empty?
+  # Signing uses the Apple ID signed in to Xcode (Settings > Accounts). The API key only uploads:
+  # cloud signing through a key needs an Admin key, and App Manager is enough for TestFlight.
+  build_app(
+    project: File.join(ROOT, "iosApp/iosApp.xcodeproj"),
+    scheme: "iosApp",
+    configuration: "Release",
+    clean: true,
+    xcargs: "TEAM_ID=#{team} DEVELOPMENT_TEAM=#{team} -allowProvisioningUpdates",
+    export_method: "app-store",
+    export_team_id: team,
+    export_options: { signingStyle: "automatic", uploadSymbols: true, manageAppVersionAndBuildNumber: false },
+    export_xcargs: "-allowProvisioningUpdates",
+    skip_profile_detection: true,
+    output_directory: OUT,
+    output_name: "PokeCollect",
+    archive_path: File.join(OUT, "PokeCollect.xcarchive"),
+    derived_data_path: File.join(ROOT, "build/ios-release"),
+    buildlog_path: File.join(OUT, "logs"),
+  )
+end
+
+def asc_key
+  return nil if blank?(ENV["ASC_KEY_ID"])
+
+  @asc_key ||= app_store_connect_api_key(
+    key_id: ENV["ASC_KEY_ID"],
+    issuer_id: ENV["ASC_ISSUER_ID"],
+    key_filepath: File.expand_path(ENV["ASC_KEY_PATH"].to_s),
+  )
+end
+
+# --- Helpers --------------------------------------------------------------------------------------
+
+def run_gradle(*tasks)
+  gradle(project_dir: ROOT, gradle_path: File.join(ROOT, "gradlew"), tasks: tasks, flags: "--console=plain")
+end
+
+# allow_failure: a failing command gives "" (sh would otherwise return its error message).
+def git(args, allow_failure: false)
+  failed = false
+  output = sh("git", "-C", ROOT, *args, log: false, error_callback: allow_failure ? ->(_) { failed = true } : nil)
+  failed ? "" : output
+end
+
+def blank?(value)
+  value.to_s.strip.empty?
+end
