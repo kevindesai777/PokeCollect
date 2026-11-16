@@ -1,0 +1,3 @@
+- Dark mode: choose System, Light or Dark on the About screen.
+- Filter your collection by generation and by cards you have or are missing, and sort it by number or name.
+- Ask about several generations at once, like "gen 3 and 6".

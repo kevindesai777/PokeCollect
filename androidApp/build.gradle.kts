@@ -35,8 +35,8 @@ android {
         applicationId = "com.pixel.pokecollect"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 2
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.1"
         ndk {
             // LiteRT-LM ships its native library for these two only. Without the filter, Play would
             // also serve 32-bit phones (sqlite-bundled has 32-bit libraries), which crash on the model.
