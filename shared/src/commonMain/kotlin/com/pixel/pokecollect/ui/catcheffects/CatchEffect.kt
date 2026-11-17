@@ -4,8 +4,19 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.pixel.pokecollect.ui.catcheffects.effects.BugEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.DarkEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.DragonEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.ElectricEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.FairyEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.FightingEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.FlyingEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.GrassEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.GroundEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.NormalEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.PoisonEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.RockEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.SteelEffect
 import kotlin.random.Random
 
 /** When an effect's moments happen, in ms from the tap. */
@@ -29,6 +40,12 @@ sealed interface CardMotion {
      * just the press.
      */
     data class Beat(val liftDp: Float = 4f) : CardMotion
+
+    /**
+     * Flying: the card rises a little, then bobs and sways as if the air holds it up, and settles at
+     * the end. Its shadow stays on the ground, which is what makes it read as floating.
+     */
+    data object Hover : CardMotion
 }
 
 /** One type's catch animation. Stateless: [start] makes the state for one catch. */
@@ -70,9 +87,23 @@ interface EffectRun {
  */
 fun effectTypeFor(type1: String, type2: String?): String = if (type1 == "normal" && type2 != null) type2 else type1
 
-/** The effect for a type, or null for types not built yet: those cards just fill, as before. */
+/**
+ * The effect for a type, or null for types not built yet: those cards just fill, as before. Fire,
+ * water, ice and ghost need shaders and psychic bends the card itself; they come next.
+ */
 internal fun catchEffectFor(type: String): CatchEffect? = when (type) {
     "normal" -> NormalEffect
     "electric" -> ElectricEffect
+    "poison" -> PoisonEffect
+    "fighting" -> FightingEffect
+    "rock" -> RockEffect
+    "ground" -> GroundEffect
+    "steel" -> SteelEffect
+    "grass" -> GrassEffect
+    "bug" -> BugEffect
+    "fairy" -> FairyEffect
+    "dragon" -> DragonEffect
+    "dark" -> DarkEffect
+    "flying" -> FlyingEffect
     else -> null
 }

@@ -173,6 +173,7 @@ internal fun Modifier.catchEffectCard(player: CatchEffectPlayer, fill: Color, sh
         val pose = player.pose()
         translationX = pose.offset.x * density
         translationY = pose.offset.y * density
+        rotationZ = pose.rotation
     }
     .onPlaced { player.cardCoordinates = it }
     .dropShadow(shape) {

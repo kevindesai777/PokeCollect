@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import kotlin.math.min
+import kotlin.math.sin
 
 /** The card when its effect starts, in dp: its size and the dex circle. */
 @Immutable
@@ -18,9 +19,9 @@ internal const val SETTLE_MS = 330
 /** How long the circle's pop lasts after it fills, ms. */
 internal const val POP_MS = 260
 
-/** Where the card is and where its shadow falls, in dp from rest. */
+/** Where the card is, where its shadow falls (both dp from rest), and its tilt in degrees. */
 @Immutable
-internal data class CardPose(val offset: Offset, val shadow: Offset) {
+internal data class CardPose(val offset: Offset, val shadow: Offset, val rotation: Float = 0f) {
     companion object {
         val Rest = CardPose(Offset.Zero, Offset(SHADOW_DP, SHADOW_DP))
     }
@@ -52,4 +53,15 @@ internal fun cardPose(motion: CardMotion, timing: EffectTiming, run: EffectRun, 
         val shake = run.shake(ms)
         CardPose(Offset(-d + shake.x, -d + shake.y), Offset(SHADOW_DP + d, SHADOW_DP + d))
     }
+    CardMotion.Hover -> {
+        val end = timing.durationMs.toFloat()
+        val up = HOVER_DP * easeInOut(progress(ms, 0f, 420f)) * (1 - easeInOut(progress(ms, end - 420, end)))
+        val k = up / HOVER_DP
+        val y = -(up + 2.5f * sin(ms / 140) * k)
+        // The card moves up by -y; its shadow moves down by as much, so it stays on the ground.
+        CardPose(Offset(3 * sin(ms / 260) * k, y), Offset(SHADOW_DP, SHADOW_DP - y), rotation = 1.6f * sin(ms / 200) * k)
+    }
 }
+
+/** How high a hovering card floats, dp. */
+private const val HOVER_DP = 9f

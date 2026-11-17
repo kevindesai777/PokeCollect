@@ -32,7 +32,7 @@ class CatchEffectTest {
 
     @Test
     fun builtEffectsKeepToTheirTimings() {
-        for (type in listOf("normal", "electric")) {
+        for (type in Built) {
             val timing = assertNotNull(catchEffectFor(type), type).timing
             assertTrue(timing.peakMs in 1 until timing.durationMs, type)
             assertTrue(timing.fillMs <= timing.durationMs, type)
@@ -42,8 +42,42 @@ class CatchEffectTest {
     }
 
     @Test
+    fun everyBuiltEffectStartsAndDrawsItsFirstMomentsWithoutCrashing() {
+        // start() makes all the randomness; shake and the circle's state are plain functions of time.
+        for (type in Built) {
+            val effect = assertNotNull(catchEffectFor(type), type)
+            val run = effect.start(card, Random(7))
+            for (ms in listOf(0f, effect.timing.peakMs.toFloat(), effect.timing.durationMs.toFloat())) {
+                val shake = run.shake(ms)
+                assertTrue(shake.x.isFinite() && shake.y.isFinite(), "$type shake at $ms")
+                run.circleScale(ms, effect.timing)
+            }
+            assertTrue(run.circleFilled(effect.timing.durationMs.toFloat(), effect.timing), "$type fills by its end")
+        }
+    }
+
+    @Test
     fun typesNotBuiltYetJustFill() {
-        assertEquals(null, catchEffectFor("fire"))
+        for (type in listOf("fire", "water", "ice", "ghost", "psychic")) assertEquals(null, catchEffectFor(type), type)
+    }
+
+    @Test
+    fun heavyHitsAndFlyingSkipTheLift() {
+        for (type in listOf("fighting", "rock", "ground", "steel", "dragon", "dark")) {
+            assertEquals(CardMotion.Beat(liftDp = 0f), catchEffectFor(type)?.motion, type)
+        }
+        assertEquals(CardMotion.Hover, catchEffectFor("flying")?.motion)
+    }
+
+    @Test
+    fun aHoveringCardLeavesItsShadowOnTheGround() {
+        val timing = EffectTiming(1500, 700)
+        for (ms in listOf(200f, 700f, 1100f)) {
+            val pose = cardPose(CardMotion.Hover, timing, NormalRunLike(), ms)
+            assertTrue(pose.offset.y < 0f, "up at $ms")
+            assertEquals(SHADOW_DP, pose.offset.y + pose.shadow.y, absoluteTolerance = 0.001f)
+        }
+        assertEquals(0f, cardPose(CardMotion.Hover, timing, NormalRunLike(), 1500f).offset.getDistance(), absoluteTolerance = 0.001f)
     }
 
     @Test
@@ -99,4 +133,8 @@ class CatchEffectTest {
     }
 
     private class NormalRunLike : EffectRun
+
+    private companion object {
+        val Built = listOf("normal", "electric", "poison", "fighting", "rock", "ground", "steel", "grass", "bug", "fairy", "dragon", "dark", "flying")
+    }
 }
