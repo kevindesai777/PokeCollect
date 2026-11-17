@@ -3,9 +3,11 @@ package com.pixel.pokecollect.ui.catcheffects
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.pixel.pokecollect.ui.catcheffects.effects.ElectricRun
+import com.pixel.pokecollect.ui.catcheffects.shaders.AllShaders
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -58,7 +60,31 @@ class CatchEffectTest {
 
     @Test
     fun typesNotBuiltYetJustFill() {
-        for (type in listOf("fire", "water", "ice", "ghost", "psychic")) assertEquals(null, catchEffectFor(type), type)
+        assertEquals(null, catchEffectFor("psychic"))
+    }
+
+    @Test
+    fun theGhostCircleFlickersBeforeItStaysFilled() {
+        val effect = assertNotNull(catchEffectFor("ghost"))
+        val run = effect.start(card, Random(1))
+        val fill = effect.timing.fillMs.toFloat()
+        val states = listOf(fill - 1, fill + 10, fill + 70, fill + 120, fill + 300).map { run.circleFilled(it, effect.timing) }
+        assertEquals(listOf(false, true, false, true, true), states)
+    }
+
+    @Test
+    fun everyShaderKeepsToWhatAgslAndSkslShare() {
+        for ((type, source) in AllShaders) {
+            val code = source.lines().joinToString("\n") { it.substringBefore("//") } // comments may mention them
+            assertTrue("half4 main(float2 p)" in code, "$type has the shared entry point")
+            for (word in listOf("fwidth", "dFdx", "dFdy", "gl_FragCoord", "texture2D", "vec2", "vec3", "vec4", "precision")) {
+                assertFalse(Regex("\\b$word\\b").containsMatchIn(code), "$type uses $word")
+            }
+            // Every uniform the shader layer sets is declared.
+            for (uniform in listOf("u_size", "u_px", "u_t", "u_time", "u_sec", "u_focus", "u_tau")) {
+                assertTrue(Regex("uniform float2? $uniform;").containsMatchIn(source), "$type declares $uniform")
+            }
+        }
     }
 
     @Test
@@ -135,6 +161,9 @@ class CatchEffectTest {
     private class NormalRunLike : EffectRun
 
     private companion object {
-        val Built = listOf("normal", "electric", "poison", "fighting", "rock", "ground", "steel", "grass", "bug", "fairy", "dragon", "dark", "flying")
+        val Built = listOf(
+            "normal", "electric", "poison", "fighting", "rock", "ground", "steel", "grass", "bug", "fairy", "dragon", "dark", "flying",
+            "fire", "water", "ice", "ghost",
+        )
     }
 }

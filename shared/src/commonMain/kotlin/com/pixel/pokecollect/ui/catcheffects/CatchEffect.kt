@@ -10,9 +10,13 @@ import com.pixel.pokecollect.ui.catcheffects.effects.DragonEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.ElectricEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.FairyEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.FightingEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.FireEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.FlyingEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.GhostEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.GrassEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.GroundEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.IceEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.WaterEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.NormalEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.PoisonEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.RockEffect
@@ -88,12 +92,16 @@ interface EffectRun {
 fun effectTypeFor(type1: String, type2: String?): String = if (type1 == "normal" && type2 != null) type2 else type1
 
 /**
- * The effect for a type, or null for types not built yet: those cards just fill, as before. Fire,
- * water, ice and ghost need shaders and psychic bends the card itself; they come next.
+ * The effect for a type, or null for types not built yet: those cards just fill, as before. Psychic
+ * bends the card itself and comes next.
  */
 internal fun catchEffectFor(type: String): CatchEffect? = when (type) {
     "normal" -> NormalEffect
     "electric" -> ElectricEffect
+    "fire" -> FireEffect
+    "water" -> WaterEffect
+    "ice" -> IceEffect
+    "ghost" -> GhostEffect
     "poison" -> PoisonEffect
     "fighting" -> FightingEffect
     "rock" -> RockEffect
