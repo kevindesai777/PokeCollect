@@ -1,8 +1,11 @@
 package com.pixel.pokecollect.ui.catcheffects
 
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.asComposeShader
+import org.jetbrains.skia.ImageFilter
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
 
@@ -20,4 +23,8 @@ private class SkslShader(source: String) : EffectShader {
     override fun setFloat2(name: String, x: Float, y: Float) = builder.uniform(name, x, y)
 
     override fun brush(): Brush = ShaderBrush(builder.makeShader().asComposeShader())
+
+    // A null input means the layer's own drawing, which becomes the `content` child.
+    override fun renderEffect(): RenderEffect =
+        ImageFilter.makeRuntimeShader(builder, CONTENT_SHADER, null).asComposeRenderEffect()
 }

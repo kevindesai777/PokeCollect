@@ -5,7 +5,9 @@ import android.graphics.RuntimeShader
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.asComposeRenderEffect
 
 // Effects only play where catchEffectsSupported is true: API 33 and newer.
 @SuppressLint("NewApi")
@@ -28,4 +30,8 @@ private class AgslShader(source: String) : EffectShader {
     override fun setFloat2(name: String, x: Float, y: Float) = shader.setFloatUniform(name, x, y)
 
     override fun brush(): Brush = brush
+
+    // A RenderEffect copies the shader's uniforms when it's made, so each frame makes its own.
+    override fun renderEffect(): RenderEffect =
+        android.graphics.RenderEffect.createRuntimeShaderEffect(shader, CONTENT_SHADER).asComposeRenderEffect()
 }

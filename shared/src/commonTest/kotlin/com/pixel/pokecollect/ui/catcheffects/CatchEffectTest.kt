@@ -3,7 +3,8 @@ package com.pixel.pokecollect.ui.catcheffects
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.pixel.pokecollect.ui.catcheffects.effects.ElectricRun
-import com.pixel.pokecollect.ui.catcheffects.shaders.AllShaders
+import com.pixel.pokecollect.ui.catcheffects.shaders.BrushShaders
+import com.pixel.pokecollect.ui.catcheffects.shaders.ContentShaders
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -59,8 +60,18 @@ class CatchEffectTest {
     }
 
     @Test
-    fun typesNotBuiltYetJustFill() {
-        assertEquals(null, catchEffectFor("psychic"))
+    fun everyTypeHasAnEffect() {
+        for (type in Built) assertNotNull(catchEffectFor(type), type)
+        assertEquals(18, Built.toSet().size)
+        assertEquals(null, catchEffectFor("stellar")) // a type the app doesn't know just fills
+    }
+
+    @Test
+    fun onlyPsychicBendsTheContent() {
+        for (type in Built) {
+            val run = assertNotNull(catchEffectFor(type), type).start(card, Random(3))
+            assertEquals(type == "psychic", run.warpsContent, type)
+        }
     }
 
     @Test
@@ -74,15 +85,26 @@ class CatchEffectTest {
 
     @Test
     fun everyShaderKeepsToWhatAgslAndSkslShare() {
-        for ((type, source) in AllShaders) {
+        for ((type, source) in BrushShaders + ContentShaders) {
             val code = source.lines().joinToString("\n") { it.substringBefore("//") } // comments may mention them
             assertTrue("half4 main(float2 p)" in code, "$type has the shared entry point")
             for (word in listOf("fwidth", "dFdx", "dFdy", "gl_FragCoord", "texture2D", "vec2", "vec3", "vec4", "precision")) {
                 assertFalse(Regex("\\b$word\\b").containsMatchIn(code), "$type uses $word")
             }
-            // Every uniform the shader layer sets is declared.
+        }
+    }
+
+    @Test
+    fun everyShaderDeclaresTheUniformsItsLayerSets() {
+        for ((type, source) in BrushShaders) {
             for (uniform in listOf("u_size", "u_px", "u_t", "u_time", "u_sec", "u_focus", "u_tau")) {
                 assertTrue(Regex("uniform float2? $uniform;").containsMatchIn(source), "$type declares $uniform")
+            }
+        }
+        for ((type, source) in ContentShaders) {
+            assertTrue("uniform shader $CONTENT_SHADER;" in source, "$type reads the content")
+            for (uniform in listOf("u_dp", "u_t", "u_sec", "u_seed")) {
+                assertTrue("uniform float $uniform;" in source, "$type declares $uniform")
             }
         }
     }
@@ -163,7 +185,7 @@ class CatchEffectTest {
     private companion object {
         val Built = listOf(
             "normal", "electric", "poison", "fighting", "rock", "ground", "steel", "grass", "bug", "fairy", "dragon", "dark", "flying",
-            "fire", "water", "ice", "ghost",
+            "fire", "water", "ice", "ghost", "psychic",
         )
     }
 }

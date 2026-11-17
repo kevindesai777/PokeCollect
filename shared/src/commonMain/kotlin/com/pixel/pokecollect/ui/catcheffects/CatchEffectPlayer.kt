@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawOutline
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
@@ -129,6 +131,11 @@ internal class CatchEffectPlayer(caught: Boolean) {
 
     fun cardFill(): Color? = run?.cardFill(ms)
 
+    /** True while a run that bends the card's content plays. */
+    val warpsContent: Boolean get() = run?.warpsContent == true
+
+    fun contentEffect(density: Float): RenderEffect? = run?.contentEffect(ms, density)
+
     fun DrawScope.drawEffectBehind() {
         val r = run ?: return
         val t = ms
@@ -166,7 +173,8 @@ internal fun rememberCatchEffectPlayer(pokemonId: Int, caught: Boolean, type1: S
 /**
  * brutal() for a card that can play a catch effect: the same hard shadow, fill and ink border.
  * While an effect plays, the card moves, its shadow follows the beat, and the effect draws behind
- * and over the card's content, clipped to the card.
+ * and over the card's content, clipped to the card. An effect that bends the content (psychic) gets
+ * the content drawn into a graphics layer with its filter; the fill, border and shadow stay straight.
  */
 internal fun Modifier.catchEffectCard(player: CatchEffectPlayer, fill: Color, shape: Shape): Modifier = this
     .graphicsLayer {
@@ -186,10 +194,20 @@ internal fun Modifier.catchEffectCard(player: CatchEffectPlayer, fill: Color, sh
     .drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
         val clip = Path().apply { addOutline(outline) }
+        // Reading the run here rebuilds this cache when a bending effect starts and ends, so only
+        // then does the card hold a layer.
+        val contentLayer = if (player.warpsContent) obtainGraphicsLayer() else null
         onDrawWithContent {
             drawOutline(outline, player.cardFill() ?: fill)
             clipPath(clip) { with(player) { drawEffectBehind() } }
-            drawContent()
+            val warp = if (contentLayer != null) player.contentEffect(density) else null
+            if (contentLayer != null && warp != null) {
+                contentLayer.renderEffect = warp
+                contentLayer.record { this@onDrawWithContent.drawContent() }
+                drawLayer(contentLayer)
+            } else {
+                drawContent()
+            }
             clipPath(clip) { with(player) { drawEffectInFront() } }
         }
     }

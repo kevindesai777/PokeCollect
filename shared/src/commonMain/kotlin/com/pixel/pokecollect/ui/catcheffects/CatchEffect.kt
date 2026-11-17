@@ -3,6 +3,7 @@ package com.pixel.pokecollect.ui.catcheffects
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.pixel.pokecollect.ui.catcheffects.effects.BugEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.DarkEffect
@@ -19,6 +20,7 @@ import com.pixel.pokecollect.ui.catcheffects.effects.IceEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.WaterEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.NormalEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.PoisonEffect
+import com.pixel.pokecollect.ui.catcheffects.effects.PsychicEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.RockEffect
 import com.pixel.pokecollect.ui.catcheffects.effects.SteelEffect
 import kotlin.random.Random
@@ -83,6 +85,15 @@ interface EffectRun {
 
     /** The dex circle's scale (x, y): by default a small pop just after it fills. */
     fun circleScale(ms: Float, timing: EffectTiming): Offset = circlePop(ms - timing.fillMs, amount = 0.18f)
+
+    /**
+     * Whether this run bends the card's content (psychic). The player then draws the content
+     * through a graphics layer for the length of the run; other runs don't pay for one.
+     */
+    val warpsContent: Boolean get() = false
+
+    /** A filter over the card's content for this frame, or null. Works in pixels, given [density]. */
+    fun contentEffect(ms: Float, density: Float): RenderEffect? = null
 }
 
 /**
@@ -91,12 +102,10 @@ interface EffectRun {
  */
 fun effectTypeFor(type1: String, type2: String?): String = if (type1 == "normal" && type2 != null) type2 else type1
 
-/**
- * The effect for a type, or null for types not built yet: those cards just fill, as before. Psychic
- * bends the card itself and comes next.
- */
+/** The effect for a type, or null for a type the app doesn't know: that card just fills. */
 internal fun catchEffectFor(type: String): CatchEffect? = when (type) {
     "normal" -> NormalEffect
+    "psychic" -> PsychicEffect
     "electric" -> ElectricEffect
     "fire" -> FireEffect
     "water" -> WaterEffect

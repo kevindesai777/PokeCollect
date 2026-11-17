@@ -11,20 +11,11 @@ package com.pixel.pokecollect.ui.catcheffects.shaders
  *
  * They are ports of the WebGL mockup in docs/research/effects. Two differences: they work in dp
  * rather than device pixels, and they flip y, because GLSL's gl_FragCoord starts at the bottom left.
+ * Psychic's content filter is the exception: a filter gets the layer's pixels, so it converts.
  */
 
-/** Uniforms and helpers every effect shader starts with. */
-private const val COMMON = """
-uniform float2 u_size;   // the card, dp
-uniform float u_px;      // dp per device pixel: one pixel of antialiasing
-uniform float u_t;       // progress through the effect, 0..1
-uniform float u_time;    // seconds, offset per catch so two cards never match
-uniform float u_sec;     // seconds since the tap
-uniform float u_focus;   // x of the dex circle's centre, dp
-uniform float u_tau;     // seconds since the circle filled, negative before
-
-const float3 INK = float3(0.0);
-
+/** Value noise, shared by the painting shaders and the content filter. */
+private const val NOISE = """
 float hash1(float2 p) {
     float2 q = fract(p * float2(123.34, 456.21));
     q += dot(q, q + 45.32);
@@ -38,7 +29,20 @@ float vnoise(float2 p) {
     return mix(mix(hash1(i), hash1(i + float2(1.0, 0.0)), u.x),
                mix(hash1(i + float2(0.0, 1.0)), hash1(i + float2(1.0, 1.0)), u.x), u.y);
 }
+"""
 
+/** Uniforms and helpers every painting shader starts with (ShaderLayer sets the uniforms). */
+private const val COMMON = """
+uniform float2 u_size;   // the card, dp
+uniform float u_px;      // dp per device pixel: one pixel of antialiasing
+uniform float u_t;       // progress through the effect, 0..1
+uniform float u_time;    // seconds, offset per catch so two cards never match
+uniform float u_sec;     // seconds since the tap
+uniform float u_focus;   // x of the dex circle's centre, dp
+uniform float u_tau;     // seconds since the circle filled, negative before
+
+const float3 INK = float3(0.0);
+""" + NOISE + """
 float fbm(float2 p) {
     float v = 0.0;
     float a = 0.5;
@@ -253,5 +257,38 @@ half4 main(float2 p) {
 }
 """
 
-/** Every effect shader, for the compile tests. */
-internal val AllShaders = mapOf("fire" to FireShader, "ghost" to GhostShader, "water" to WaterShader, "ice" to IceShader)
+/**
+ * Psychic: bends the card's content, strongest halfway through. A port of the mockup's SVG filter
+ * (feTurbulence, fractal noise, two octaves, into feDisplacementMap): two noise fields push each
+ * pixel sideways and up or down by up to half of 18 dp. The bands are wide and flat (0.012 per dp
+ * across, 0.05 down), and the vertical frequency wobbles, so the bend shimmers.
+ *
+ * A content filter, not a painting shader: `p` is in the layer's pixels, and `content` is the card's
+ * content as drawn. ContentWarp sets the uniforms.
+ */
+internal const val PsychicShader = """
+uniform shader content;  // the card's content, as drawn
+uniform float u_dp;      // device pixels per dp
+uniform float u_t;       // progress through the effect, 0..1
+uniform float u_sec;     // seconds since the tap
+uniform float u_seed;    // moves the noise per catch
+""" + NOISE + """
+// Two octaves of value noise, about 0..1, like feTurbulence's fractal noise.
+float turbulence(float2 n) {
+    return (2.0 * vnoise(n) + vnoise(n * 2.0 + float2(17.0, 9.0))) / 3.0;
+}
+
+half4 main(float2 p) {
+    float2 q = p / u_dp;
+    float2 n = q * float2(0.012, 0.05 + 0.015 * sin(u_sec * 9.09)) + u_seed;
+    float2 c = float2(turbulence(n), turbulence(n + float2(41.0, 13.0)));
+    float amount = 18.0 * sin(3.14159265 * u_t);
+    return content.eval(p + amount * (c - 0.5) * u_dp);
+}
+"""
+
+/** The shaders that paint the card (through ShaderLayer), for the compile tests. */
+internal val BrushShaders = mapOf("fire" to FireShader, "ghost" to GhostShader, "water" to WaterShader, "ice" to IceShader)
+
+/** The shaders that filter the card's content (through ContentWarp), for the compile tests. */
+internal val ContentShaders = mapOf("psychic" to PsychicShader)
