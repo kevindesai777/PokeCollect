@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -44,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pixel.pokecollect.settings.Appearance
+import com.pixel.pokecollect.ui.catcheffects.catchEffectsSupported
+import com.pixel.pokecollect.ui.catcheffects.rememberSystemReducedMotion
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
@@ -91,10 +94,16 @@ private val Credits = listOf(
     Credit("neubrutalism-compose-multiplatform", "MIT License.", "https://github.com/tamtom/neubrutalism-compose-multiplatform"),
 )
 
-/** Light or dark, the fan-app disclaimer, what happens to your data, and the licences. */
+/** Light or dark, catch animations, the fan-app disclaimer, what happens to your data, and the licences. */
 @OptIn(ExperimentalComposeUiApi::class) // BackHandler
 @Composable
-fun AboutScreen(appearance: Appearance, onAppearanceChange: (Appearance) -> Unit, onBack: () -> Unit) {
+fun AboutScreen(
+    appearance: Appearance,
+    onAppearanceChange: (Appearance) -> Unit,
+    catchEffects: Boolean,
+    onCatchEffectsChange: (Boolean) -> Unit,
+    onBack: () -> Unit,
+) {
     // A licence text opens over the list; Back returns to the list.
     var openFile by rememberSaveable { mutableStateOf<String?>(null) }
     // Outlives the licence view, so Back returns to the same place in the list.
@@ -117,6 +126,10 @@ fun AboutScreen(appearance: Appearance, onAppearanceChange: (Appearance) -> Unit
                 AppearancePicker(appearance, onAppearanceChange)
                 Text("System follows your phone's setting.", style = MaterialTheme.typography.bodySmall, color = PokeColors.OnSurfaceVariant)
             }
+        }
+        // Android 12 and older don't play catch effects, so there's nothing to switch.
+        if (catchEffectsSupported) {
+            item { Section("Motion") { CatchEffectsRow(catchEffects, onCatchEffectsChange) } }
         }
         item {
             Section("Unofficial fan app") {
@@ -206,6 +219,27 @@ private fun AppearancePicker(selected: Appearance, onSelect: (Appearance) -> Uni
                 Text(option.name, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp), color = contentColorOn(fill))
             }
         }
+    }
+}
+
+/** Catch animations on or off. The whole row is one switch for touch and for screen readers. */
+@Composable
+private fun CatchEffectsRow(on: Boolean, onChange: (Boolean) -> Unit) {
+    val reducedMotion = rememberSystemReducedMotion()
+    Row(
+        modifier = Modifier.fillMaxWidth().toggleable(value = on, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Catch animations", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+            Text(
+                if (reducedMotion) "Off while your phone is set to reduce motion." else "An effect for the card's type when you catch it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = PokeColors.OnSurfaceVariant,
+            )
+        }
+        BrutalSwitch(on)
     }
 }
 

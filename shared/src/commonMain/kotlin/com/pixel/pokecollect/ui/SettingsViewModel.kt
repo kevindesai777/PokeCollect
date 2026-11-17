@@ -6,11 +6,16 @@ import com.pixel.pokecollect.settings.SettingsRepository
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * App-wide settings: the theme for every screen, and the controls on the About screen. No Loading
- * state: settings are read synchronously, so the first frame already has them.
+ * App-wide settings: the theme for every screen, whether catching a card plays its effect, and the
+ * controls on the About screen. No Loading state: settings are read synchronously, so the first
+ * frame already has them.
  */
 class SettingsViewModel(private val settings: SettingsRepository) : ViewModel() {
     val appearance: StateFlow<Appearance> = settings.appearance
 
     fun setAppearance(value: Appearance) = settings.setAppearance(value)
+
+    val catchEffects: StateFlow<Boolean> = settings.catchEffects
+
+    fun setCatchEffects(on: Boolean) = settings.setCatchEffects(on)
 }
