@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,36 +49,57 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pixel.pokecollect.data.PokemonWithCollection
+import com.pixel.pokecollect.ui.catcheffects.catchEffectCard
+import com.pixel.pokecollect.ui.catcheffects.catchEffectCircle
+import com.pixel.pokecollect.ui.catcheffects.rememberCatchEffectPlayer
 import com.pixel.pokecollect.ui.theme.PokeColors
 import com.pixel.pokecollect.ui.theme.PokeShapes
 import com.pixel.pokecollect.ui.theme.brutal
 import com.pixel.pokecollect.ui.theme.monoFontFamily
 import com.pixel.pokecollect.ui.theme.typeFill
 
-/** One card in a list: sprite or dex circle, name, generation, type chips, caught box. */
+/**
+ * One card in a list: sprite or dex circle, name, generation, type chips, caught box. Ticking it
+ * plays the catch effect for its type (ui/catcheffects), if that's on.
+ */
 @Composable
 internal fun PokemonRow(entry: PokemonWithCollection, onCaughtChange: (Boolean) -> Unit) {
     val p = entry.pokemon
     val sprite by rememberSprite(p.id)
+    val effect = rememberCatchEffectPlayer(p.id, entry.caught, p.type1, p.type2)
+    // In dark mode the text is cream, which an effect's fills drown out: give it a hard ink shadow while one plays.
+    val textShadow = if (effect.isPlaying && PokeColors.OnSurface != PokeColors.Ink) {
+        Shadow(PokeColors.Ink, with(LocalDensity.current) { Offset(1.5.dp.toPx(), 1.5.dp.toPx()) })
+    } else {
+        null
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .brutal(PokeColors.Surface, PokeShapes.Medium)
+            .catchEffectCard(effect, PokeColors.Surface, PokeShapes.Medium)
             .clickable { onCaughtChange(!entry.caught) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        DexCircle(p.id, sprite, fill = if (entry.caught) typeFill(p.type1) else null)
+        DexCircle(
+            p.id,
+            sprite,
+            fill = if (effect.circleFilled(entry.caught)) typeFill(p.type1) else null,
+            modifier = Modifier.catchEffectCircle(effect),
+            textShadow = textShadow,
+        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(p.name, style = MaterialTheme.typography.titleSmall)
+                Text(p.name, style = MaterialTheme.typography.titleSmall.copy(shadow = textShadow))
                 // With a sprite in the circle, the dex number moves next to the name.
                 if (sprite != null) {
                     Text(
@@ -96,7 +118,7 @@ internal fun PokemonRow(entry: PokemonWithCollection, onCaughtChange: (Boolean) 
             ) {
                 Text(
                     "Gen ${p.generation}",
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.sp),
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.sp, shadow = textShadow),
                     color = PokeColors.OnSurfaceVariant,
                     modifier = Modifier.padding(end = 2.dp),
                 )
@@ -108,9 +130,9 @@ internal fun PokemonRow(entry: PokemonWithCollection, onCaughtChange: (Boolean) 
 }
 
 @Composable
-internal fun DexCircle(id: Int, sprite: Sprite?, fill: Color?) {
+internal fun DexCircle(id: Int, sprite: Sprite?, fill: Color?, modifier: Modifier = Modifier, textShadow: Shadow? = null) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(56.dp)
             .then(
                 if (fill != null) {
@@ -145,6 +167,7 @@ internal fun DexCircle(id: Int, sprite: Sprite?, fill: Color?) {
                 fontWeight = FontWeight.Bold,
                 fontSize = if (label.length > 4) 12.sp else 14.sp,
                 color = if (fill != null) PokeColors.Ink else PokeColors.OnSurfaceVariant,
+                style = LocalTextStyle.current.copy(shadow = if (fill != null) null else textShadow),
             )
         }
     }
