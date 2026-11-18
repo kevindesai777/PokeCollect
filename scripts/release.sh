@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Builds PokeCollect for both stores and uploads it: a draft production release on Play, a
-# TestFlight build on App Store Connect. The steps are in fastlane/Fastfile; keys in fastlane/.env.
+# Builds PokeCollect for both stores and uploads it: a draft production release on Play and a
+# TestFlight build on App Store Connect, or with submit:true both sent for review. The steps are in
+# fastlane/Fastfile; keys in fastlane/.env.
 #
-#   scripts/release.sh version:1.1 [only:android|only:ios] [upload:false] [tests:false]
+#   scripts/release.sh version:1.1 [submit:true] [only:android|only:ios] [upload:false] [tests:false]
 #
 # Write the release notes in fastlane/metadata/android/en-US/changelogs/default.txt first.
 set -euo pipefail

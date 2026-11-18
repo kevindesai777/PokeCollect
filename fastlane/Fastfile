@@ -1,15 +1,20 @@
-# Releases PokeCollect to both stores from this Mac. Play gets a draft production release and App
-# Store Connect a TestFlight build; sending either for review stays a click in its console.
+# Releases PokeCollect to both stores from this Mac. By default Play gets a draft production release
+# and App Store Connect a TestFlight build, and sending either for review is a click in its console.
+# With submit:true both go for review, and each store releases the version once it is approved.
 #
-#   scripts/release.sh version:1.1                 both stores
+#   scripts/release.sh version:1.1                 both stores, drafts
+#   scripts/release.sh version:1.1 submit:true     both stores, sent for review
 #   scripts/release.sh version:1.1 only:ios        one store (or only:android), e.g. to retry it
 #   scripts/release.sh version:1.1 upload:false    build and check everything; upload and commit nothing
+#   fastlane submit_ios version:1.1                send the uploaded iOS build for review again
 #
 # Before a release, write the notes in fastlane/metadata/android/en-US/changelogs/default.txt
-# (Play's limit is 500 characters). Keys and paths come from fastlane/.env (see .env.example).
+# (Play's limit is 500 characters). They are Play's release notes and the App Store's What's New.
+# Keys and paths come from fastlane/.env (see .env.example).
 #
 # Order: checks, one build number for both stores, tests, both builds, then both uploads, then the
-# version bump and notes are committed, tagged v<version>-<build> and pushed. A failure before any
+# version bump and notes are committed, tagged v<version>-<build> and pushed, then (submit:true) the
+# App Store submission, which first waits for Apple to process the build. A failure before any
 # upload puts the version files back.
 
 opt_out_usage # no usage reports to fastlane
@@ -32,6 +37,8 @@ lane :release do |options|
   version = options[:version].to_s
   UI.user_error!("Pass the version name, e.g. version:1.1") unless version.match?(/\A\d+\.\d+(\.\d+)?\z/)
   upload = options[:upload].to_s != "false"
+  submit = options[:submit].to_s == "true"
+  UI.user_error!("submit:true needs the upload: drop upload:false") if submit && !upload
   stores = { "" => %i[android ios], "android" => %i[android], "ios" => %i[ios] }[options[:only].to_s]
   UI.user_error!("only: takes android or ios") unless stores
 
@@ -39,7 +46,8 @@ lane :release do |options|
   originals = [GRADLE_FILE, XCCONFIG].to_h { |file| [file, File.read(file)] }
   build = (local_build_numbers + store_build_numbers(stores)).max + 1
   set_versions(version, build, stores)
-  UI.header("PokeCollect #{version} (#{build}): #{stores.join(' and ')}#{upload ? '' : ', dry run'}")
+  mode = if !upload then ", dry run" elsif submit then ", sent for review" else ", drafts" end
+  UI.header("PokeCollect #{version} (#{build}): #{stores.join(' and ')}#{mode}")
 
   uploaded = []
   problems = []
@@ -51,7 +59,7 @@ lane :release do |options|
     build_ios if stores.include?(:ios)
     if upload
       if stores.include?(:android)
-        upload_android
+        upload_android(submit: submit)
         uploaded << :android
       end
       if stores.include?(:ios)
@@ -80,6 +88,22 @@ lane :release do |options|
   push_to_git_remote(remote: "origin", local_branch: "main", remote_branch: "main", tags: true)
 
   UI.success("PokeCollect #{version} (#{build}) uploaded, committed and tagged v#{version}-#{build}.")
+
+  if submit
+    if stores.include?(:ios)
+      begin
+        submit_ios(version)
+      rescue StandardError, Interrupt
+        UI.error("#{version} (#{build}) is uploaded, committed and tagged, but the App Store submission failed. " \
+                 "Retry it with: fastlane submit_ios version:#{version}")
+        raise
+      end
+    end
+    UI.message("Play: #{version} is in review and rolls out to everyone once approved.") if stores.include?(:android)
+    UI.message("App Store: #{version} is in review and is released once approved.") if stores.include?(:ios)
+    next
+  end
+
   if stores.include?(:android)
     UI.message("Play Console > Production: check the draft release, then send it for review.")
   end
@@ -88,6 +112,14 @@ lane :release do |options|
                "paste these notes into What's New and submit:")
     UI.message(File.read(NOTES).strip)
   end
+end
+
+# Sends the iOS build in build/release for review as App Store version [version]: waits for Apple to
+# finish processing it, creates the version if needed, sets What's New from the notes and submits.
+lane :submit_ios do |options|
+  version = options[:version].to_s
+  UI.user_error!("Pass the version name, e.g. version:1.1") unless version.match?(/\A\d+\.\d+(\.\d+)?\z/)
+  submit_ios(version)
 end
 
 # --- Checks ---------------------------------------------------------------------------------------
@@ -181,10 +213,11 @@ def build_android(strict:)
   problems
 end
 
-def upload_android
+# submit: "completed" sends the release for review, and Play rolls it out to everyone once it's approved.
+def upload_android(submit:)
   upload_to_play_store(
     track: "production",
-    release_status: "draft",
+    release_status: submit ? "completed" : "draft",
     aab: AAB,
     mapping: (MAPPING if File.exist?(MAPPING)),
     metadata_path: File.join(ROOT, "fastlane/metadata/android"),
@@ -221,6 +254,33 @@ def build_ios
     archive_path: File.join(OUT, "PokeCollect.xcarchive"),
     derived_data_path: File.join(ROOT, "build/ios-release"),
     buildlog_path: File.join(OUT, "logs"),
+  )
+end
+
+def submit_ios(version)
+  UI.user_error!("No #{IPA}: upload a build first") unless File.exist?(IPA)
+  notes = File.read(NOTES).strip
+  UI.user_error!("Write the release notes in #{NOTES_PATH}") if notes.empty?
+  # Only What's New comes from here; the rest of the listing stays as it is in App Store Connect.
+  # An empty metadata folder, since fastlane/metadata holds Play's.
+  metadata = File.join(OUT, "app-store-metadata")
+  FileUtils.mkdir_p(metadata)
+  upload_to_app_store(
+    api_key: asc_key,
+    app_version: version,
+    # The IPA isn't uploaded again: deliver reads its build number and waits until that build has
+    # processed before it picks it for the version.
+    ipa: IPA,
+    skip_binary_upload: true,
+    skip_screenshots: true,
+    metadata_path: metadata,
+    release_notes: { "en-US" => notes },
+    submit_for_review: true,
+    automatic_release: true,
+    # Info.plist says the same (ITSAppUsesNonExemptEncryption).
+    submission_information: { export_compliance_uses_encryption: false },
+    run_precheck_before_submit: false,
+    force: true, # no HTML preview to confirm
   )
 end
 
