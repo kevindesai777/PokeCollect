@@ -1,0 +1,4 @@
+<resources>
+    <!-- Installed beside the Play app: a different name tells the two icons apart. -->
+    <string name="app_name">PokeCollect bench</string>
+</resources>

@@ -53,6 +53,11 @@ object PokeColors {
     val Caution = Color(0xFFFF9F5A)
     val Highlight = Color(0xFFFF8FB8)
 
+    /** Steel's catch effect: the shutter plates, their bevel and their shade. The steel type fill is too blue for metal. */
+    val Silver = Color(0xFFC9CED6)
+    val SilverLight = Color(0xFFF1F3F6)
+    val SilverDark = Color(0xFF8E959F)
+
     val Background: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.background
     val Surface: Color @Composable @ReadOnlyComposable get() = LocalPokePalette.current.surface
 

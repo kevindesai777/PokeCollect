@@ -17,7 +17,7 @@ interface SettingsStore {
     fun putString(key: String, value: String)
 }
 
-/** The person's settings. Only the appearance so far. */
+/** The person's settings: the appearance, and whether catching a card plays its type's effect. */
 class SettingsRepository(private val store: SettingsStore) {
     private val _appearance = MutableStateFlow(
         store.getString(APPEARANCE)?.let { saved -> Appearance.entries.firstOrNull { it.name == saved } } ?: Appearance.System,
@@ -29,7 +29,19 @@ class SettingsRepository(private val store: SettingsStore) {
         _appearance.value = value
     }
 
+    // On unless it was switched off: only a saved "false" turns it off.
+    private val _catchEffects = MutableStateFlow(store.getString(CATCH_EFFECTS) != false.toString())
+
+    /** Whether ticking a card plays the effect for its type. On by default. */
+    val catchEffects: StateFlow<Boolean> = _catchEffects.asStateFlow()
+
+    fun setCatchEffects(on: Boolean) {
+        store.putString(CATCH_EFFECTS, on.toString())
+        _catchEffects.value = on
+    }
+
     private companion object {
         const val APPEARANCE = "appearance"
+        const val CATCH_EFFECTS = "catch_effects"
     }
 }

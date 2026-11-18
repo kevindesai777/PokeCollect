@@ -71,6 +71,15 @@ android {
             )
             signingConfig = signingConfigs.findByName("upload")
         }
+        // For measuring on a phone (scripts/measure_effects.py): the release code, R8 and all, but
+        // profileable, debug-signed and installed beside the Play app as its own package.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".benchmark"
+            isProfileable = true
+            matchingFallbacks += listOf("release")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

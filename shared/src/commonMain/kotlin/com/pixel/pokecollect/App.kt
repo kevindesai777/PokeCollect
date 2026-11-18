@@ -1,6 +1,7 @@
 package com.pixel.pokecollect
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +16,9 @@ import com.pixel.pokecollect.ui.AskViewModel
 import com.pixel.pokecollect.ui.CollectionScreen
 import com.pixel.pokecollect.ui.CollectionViewModel
 import com.pixel.pokecollect.ui.SettingsViewModel
+import com.pixel.pokecollect.ui.catcheffects.LocalCatchEffects
+import com.pixel.pokecollect.ui.catcheffects.catchEffectsSupported
+import com.pixel.pokecollect.ui.catcheffects.rememberSystemReducedMotion
 import com.pixel.pokecollect.ui.theme.PokeCollectTheme
 import com.pixel.pokecollect.ui.theme.SystemAppearance
 import com.pixel.pokecollect.ui.theme.isDark
@@ -36,62 +40,69 @@ fun App() {
     val appearance by settings.appearance.collectAsStateWithLifecycle()
     val dark = appearance.isDark()
     SystemAppearance(appearance, dark)
+    val catchEffects by settings.catchEffects.collectAsStateWithLifecycle()
+    val reducedMotion = rememberSystemReducedMotion()
+    val playCatchEffects = catchEffectsSupported && catchEffects && !reducedMotion
 
     PokeCollectTheme(dark = dark) {
-        when (screen) {
-            Screen.Collection -> {
-                val viewModel = koinViewModel<CollectionViewModel>()
-                val state by viewModel.uiState.collectAsStateWithLifecycle()
-                CollectionScreen(
-                    state = state,
-                    query = viewModel.query,
-                    onQueryChange = viewModel::search,
-                    onSelectGeneration = viewModel::selectGeneration,
-                    onShow = viewModel::show,
-                    onOrderChange = viewModel::setOrder,
-                    onCaughtChange = viewModel::setCaught,
-                    onAsk = { text ->
-                        askDraft = text.trim()
-                        viewModel.search("") // the text moves to the Ask screen
-                        screen = Screen.Ask
-                    },
-                    onVoice = {
-                        askDraft = ""
-                        listenOnOpen = true
-                        screen = Screen.Ask
-                    },
-                    onAbout = { screen = Screen.About },
-                )
-            }
-            Screen.About -> {
-                BackHandler { screen = Screen.Collection }
-                AboutScreen(
-                    appearance = appearance,
-                    onAppearanceChange = settings::setAppearance,
-                    onBack = { screen = Screen.Collection },
-                )
-            }
-            Screen.Ask -> {
-                val viewModel = koinViewModel<AskViewModel>()
-                val state by viewModel.uiState.collectAsStateWithLifecycle()
-                BackHandler { screen = Screen.Collection }
-                DisposableEffect(Unit) { onDispose { viewModel.leave() } }
-                AskScreen(
-                    state = state,
-                    initialQuestion = askDraft,
-                    listenOnOpen = listenOnOpen,
-                    onListenOnOpenHandled = { listenOnOpen = false },
-                    onAsk = viewModel::ask,
-                    onStartListening = viewModel::startListening,
-                    onStopListening = viewModel::stopListening,
-                    onMicrophoneDenied = viewModel::microphoneDenied,
-                    onToggleCard = viewModel::toggleCard,
-                    onChooseCard = viewModel::chooseCard,
-                    onMarkCaught = viewModel::markCaught,
-                    onCaughtChange = viewModel::setCaught,
-                    onRetryDownload = viewModel::retryDownload,
-                    onBack = { screen = Screen.Collection },
-                )
+        CompositionLocalProvider(LocalCatchEffects provides playCatchEffects) {
+            when (screen) {
+                Screen.Collection -> {
+                    val viewModel = koinViewModel<CollectionViewModel>()
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    CollectionScreen(
+                        state = state,
+                        query = viewModel.query,
+                        onQueryChange = viewModel::search,
+                        onSelectGeneration = viewModel::selectGeneration,
+                        onShow = viewModel::show,
+                        onOrderChange = viewModel::setOrder,
+                        onCaughtChange = viewModel::setCaught,
+                        onAsk = { text ->
+                            askDraft = text.trim()
+                            viewModel.search("") // the text moves to the Ask screen
+                            screen = Screen.Ask
+                        },
+                        onVoice = {
+                            askDraft = ""
+                            listenOnOpen = true
+                            screen = Screen.Ask
+                        },
+                        onAbout = { screen = Screen.About },
+                    )
+                }
+                Screen.About -> {
+                    BackHandler { screen = Screen.Collection }
+                    AboutScreen(
+                        appearance = appearance,
+                        onAppearanceChange = settings::setAppearance,
+                        catchEffects = catchEffects,
+                        onCatchEffectsChange = settings::setCatchEffects,
+                        onBack = { screen = Screen.Collection },
+                    )
+                }
+                Screen.Ask -> {
+                    val viewModel = koinViewModel<AskViewModel>()
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    BackHandler { screen = Screen.Collection }
+                    DisposableEffect(Unit) { onDispose { viewModel.leave() } }
+                    AskScreen(
+                        state = state,
+                        initialQuestion = askDraft,
+                        listenOnOpen = listenOnOpen,
+                        onListenOnOpenHandled = { listenOnOpen = false },
+                        onAsk = viewModel::ask,
+                        onStartListening = viewModel::startListening,
+                        onStopListening = viewModel::stopListening,
+                        onMicrophoneDenied = viewModel::microphoneDenied,
+                        onToggleCard = viewModel::toggleCard,
+                        onChooseCard = viewModel::chooseCard,
+                        onMarkCaught = viewModel::markCaught,
+                        onCaughtChange = viewModel::setCaught,
+                        onRetryDownload = viewModel::retryDownload,
+                        onBack = { screen = Screen.Collection },
+                    )
+                }
             }
         }
     }
