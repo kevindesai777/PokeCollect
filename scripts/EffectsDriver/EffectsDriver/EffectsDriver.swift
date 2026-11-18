@@ -24,6 +24,39 @@ final class EffectsDriver: XCTestCase {
         print(app.debugDescription)
     }
 
+    /// What VoiceOver gets for a card's row before a tick, mid-effect and after: an effect must not
+    /// change it. Prints "A11Y <moment>: <elements>" lines; EFFECT_NAME picks the card.
+    func testA11y() throws {
+        let name = env["EFFECT_NAME"] ?? "Charmander"
+        app.launch()
+        openList()
+        search(name)
+        let row = try findRow(name)
+        if isCaught(row) {
+            row.tap()
+            sleep(1)
+        }
+        print("A11Y before: \(elements(around: row.frame))")
+        row.tap()
+        Thread.sleep(forTimeInterval: 0.4)
+        print("A11Y mid: \(elements(around: row.frame))")
+        Thread.sleep(forTimeInterval: 2.0)
+        print("A11Y after: \(elements(around: row.frame))")
+        row.tap() // untick
+    }
+
+    /// The accessibility elements whose centre lies in [frame]'s rows, from one snapshot.
+    private func elements(around frame: CGRect) -> String {
+        let pattern = #/^\s*(\w+), 0x[0-9a-f]+, \{\{([\d.]+), ([\d.]+)\}, \{([\d.]+), ([\d.]+)\}\}(.*)$/#
+        return app.debugDescription.split(separator: "\n").compactMap { line -> String? in
+            guard let m = try? pattern.wholeMatch(in: String(line)),
+                  let y = Double(m.3), let h = Double(m.5), let w = Double(m.4) else { return nil }
+            let mid = y + h / 2
+            guard frame.minY <= mid, mid <= frame.maxY, w < frame.width + 1 else { return nil }
+            return "\(m.1)\(m.6)"
+        }.joined(separator: " | ")
+    }
+
     func testPlay() throws {
         let cards = (env["EFFECT_CARDS"] ?? "fire:Charmander").split(separator: ",").map {
             let parts = $0.split(separator: ":").map(String.init)
