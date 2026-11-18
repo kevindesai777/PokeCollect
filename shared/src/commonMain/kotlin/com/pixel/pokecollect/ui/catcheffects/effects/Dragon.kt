@@ -69,6 +69,34 @@ private class DragonRun(private val card: CardGeometry, random: Random) : Effect
         Glint(Offset(c.x + 50 + random.nextFloat() * (w - c.x - 70), 10 + random.nextFloat() * (h - 20)), random.nextFloat() * 120)
     }
 
+    // The hide never moves, only its edge does, so its scales and spines are made once per catch:
+    // every scale outlined in one path, the light ones filled in another. Made and drawn as ~260
+    // separate paths every frame, they cost a Pixel 8 about 3 ms more GPU time per frame.
+    private val scales = Path()
+    private val litScales = Path()
+    private val spines = Path()
+
+    init {
+        var row = 0
+        while (row * SCALE_H < h + SCALE_H) {
+            var col = -1
+            while (col * SCALE_W < w + SCALE_W) {
+                val x = col * SCALE_W + if (row % 2 == 1) SCALE_W / 2 else 0f
+                val y = row * SCALE_H
+                val bounds = Rect(x - SCALE_W / 2, y - SCALE_W / 2, x + SCALE_W / 2, y + SCALE_W / 2)
+                scales.addArc(bounds, 0f, 180f)
+                if ((col + 1) * 100 + row in lit) litScales.addArc(bounds, 0f, 180f)
+                col++
+            }
+            row++
+        }
+        var x = 14f
+        while (x < w) {
+            spines.addPath(polyline(listOf(Offset(x - 9, 9f), Offset(x + 2, -9f), Offset(x + 9, 9f)), close = true))
+            x += 30
+        }
+    }
+
     override fun DrawScope.behind(ms: Float) {
         // The hide sweeps in from the right, and out to the right after the eye closes.
         val inEdge = lerp(w + 40, -40f, easeOut(progress(ms, 0f, 300f)))
@@ -78,24 +106,9 @@ private class DragonRun(private val card: CardGeometry, random: Random) : Effect
         val region = polyline(listOf(Offset(edge + 16, -20f), Offset(w + 30, -20f), Offset(w + 30, h + 12), Offset(edge - 16, h + 12)), close = true)
         clipPath(region) {
             drawRect(Scale, Offset(-10f, 0f), Size(w + 20, h + 10))
-            var row = 0
-            while (row * SCALE_H < h + SCALE_H) {
-                var col = -1
-                while (col * SCALE_W < w + SCALE_W) {
-                    val x = col * SCALE_W + if (row % 2 == 1) SCALE_W / 2 else 0f
-                    val y = row * SCALE_H
-                    val scale = Path().apply { addArc(Rect(x - SCALE_W / 2, y - SCALE_W / 2, x + SCALE_W / 2, y + SCALE_W / 2), 0f, 180f) }
-                    if ((col + 1) * 100 + row in lit) drawPath(scale, LitScale)
-                    drawPath(scale, PokeColors.Ink, style = Stroke(1.5f))
-                    col++
-                }
-                row++
-            }
-            var x = 14f
-            while (x < w) {
-                inkFill(polyline(listOf(Offset(x - 9, 9f), Offset(x + 2, -9f), Offset(x + 9, 9f)), close = true), Spine, 1.8f)
-                x += 30
-            }
+            drawPath(litScales, LitScale)
+            drawPath(scales, PokeColors.Ink, style = Stroke(1.5f))
+            inkFill(spines, Spine, 1.8f)
         }
         drawLine(PokeColors.Ink, Offset(edge + 16, -20f), Offset(edge - 16, h + 12), 2.5f)
     }
