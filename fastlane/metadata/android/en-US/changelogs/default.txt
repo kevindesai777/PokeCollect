@@ -1,3 +1,2 @@
-- Dark mode: choose System, Light or Dark on the About screen.
-- Filter your collection by generation and by cards you have or are missing, and sort it by number or name.
-- Ask about several generations at once, like "gen 3 and 6".
+- Catch animations: ticking a card plays a short effect for its type, like flames for Fire, a wave for Water, frost for Ice or a dragon's eye for Dragon. Each of the 18 types has its own.
+- Turn them off in About > Motion. They also stay off while your phone is set to reduce motion.
