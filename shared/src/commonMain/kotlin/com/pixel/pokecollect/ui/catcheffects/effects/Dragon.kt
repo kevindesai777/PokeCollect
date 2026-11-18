@@ -56,25 +56,11 @@ private const val SCALE_H = 9f
 
 private class Glint(val at: Offset, val delayMs: Float)
 
-private class DragonRun(private val card: CardGeometry, random: Random) : EffectRun {
-    private val w = card.size.width
-    private val h = card.size.height
-    private val peak = DragonEffect.timing.peakMs.toFloat()
-
-    /** A few scales picked to be the lighter colour, by column and row. */
-    private val lit: Set<Int> = List(40) { random.nextInt(30) * 100 + random.nextInt(12) }.toSet()
-
-    private val glints = List(5) {
-        val c = card.circleCenter
-        Glint(Offset(c.x + 50 + random.nextFloat() * (w - c.x - 70), 10 + random.nextFloat() * (h - 20)), random.nextFloat() * 120)
-    }
-
-    // The hide never moves, only its edge does, so its scales and spines are made once per catch:
-    // every scale outlined in one path, the light ones filled in another. Made and drawn as ~260
-    // separate paths every frame, they cost a Pixel 8 about 3 ms more GPU time per frame.
-    private val scales = Path()
-    private val litScales = Path()
-    private val spines = Path()
+/** The dragon's hide for a card [w] × [h]: scale outlines, the [lit] scales' fills, the spines. */
+private class Hide(w: Float, h: Float, lit: Set<Int>) {
+    val scales = Path()
+    val litScales = Path()
+    val spines = Path()
 
     init {
         var row = 0
@@ -96,6 +82,26 @@ private class DragonRun(private val card: CardGeometry, random: Random) : Effect
             x += 30
         }
     }
+}
+
+private class DragonRun(private val card: CardGeometry, random: Random) : EffectRun {
+    private val w = card.size.width
+    private val h = card.size.height
+    private val peak = DragonEffect.timing.peakMs.toFloat()
+
+    /** A few scales picked to be the lighter colour, by column and row. */
+    private val lit: Set<Int> = List(40) { random.nextInt(30) * 100 + random.nextInt(12) }.toSet()
+
+    private val glints = List(5) {
+        val c = card.circleCenter
+        Glint(Offset(c.x + 50 + random.nextFloat() * (w - c.x - 70), 10 + random.nextFloat() * (h - 20)), random.nextFloat() * 120)
+    }
+
+    // The hide never moves, only its edge does, so its scales and spines are made once per catch,
+    // on its first frame: every scale outlined in one path, the light ones filled in another. Made
+    // and drawn as ~260 separate paths every frame, they cost a Pixel 8 about 3 ms more GPU time
+    // per frame. Not in start(), which only makes the run's randomness.
+    private val hide by lazy(LazyThreadSafetyMode.NONE) { Hide(w, h, lit) }
 
     override fun DrawScope.behind(ms: Float) {
         // The hide sweeps in from the right, and out to the right after the eye closes.
@@ -106,9 +112,9 @@ private class DragonRun(private val card: CardGeometry, random: Random) : Effect
         val region = polyline(listOf(Offset(edge + 16, -20f), Offset(w + 30, -20f), Offset(w + 30, h + 12), Offset(edge - 16, h + 12)), close = true)
         clipPath(region) {
             drawRect(Scale, Offset(-10f, 0f), Size(w + 20, h + 10))
-            drawPath(litScales, LitScale)
-            drawPath(scales, PokeColors.Ink, style = Stroke(1.5f))
-            inkFill(spines, Spine, 1.8f)
+            drawPath(hide.litScales, LitScale)
+            drawPath(hide.scales, PokeColors.Ink, style = Stroke(1.5f))
+            inkFill(hide.spines, Spine, 1.8f)
         }
         drawLine(PokeColors.Ink, Offset(edge + 16, -20f), Offset(edge - 16, h + 12), 2.5f)
     }
